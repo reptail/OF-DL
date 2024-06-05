@@ -12,11 +12,10 @@ using Spectre.Console;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using static OF_DL.Entities.Lists.UserList;
 
 namespace OF_DL;
 
-public class Program
+public partial class Program
 {
     public int MAX_AGE = 0;
     public static List<long> paid_post_ids = new();
@@ -97,7 +96,7 @@ public class Program
             }
             else
             {
-                File.WriteAllText("auth.json", JsonConvert.SerializeObject(new Auth()));
+                await File.WriteAllTextAsync("auth.json", JsonConvert.SerializeObject(new Auth()));
                 AnsiConsole.Markup("[red]auth.json does not exist, a default file has been created in the folder you are running the program from[/]");
                 Log.Error("auth.json does not exist");
 
@@ -133,7 +132,7 @@ public class Program
             }
             else
             {
-                File.WriteAllText("config.json", JsonConvert.SerializeObject(new Config()));
+                await File.WriteAllTextAsync("config.json", JsonConvert.SerializeObject(new Config()));
                 AnsiConsole.Markup("[red]config.json does not exist, a default file has been created in the folder you are running the program from[/]");
                 Log.Error("config.json does not exist");
 
@@ -323,7 +322,7 @@ public class Program
             }
             else if (Config.NonInteractiveMode && !string.IsNullOrEmpty(Config.NonInteractiveModeListName))
             {
-                List<string> listUsernames = new();
+                List<string> listUsernames = [];
                 int listId = lists[Config.NonInteractiveModeListName];
                 List<string> usernames = await m_ApiHelper.GetListUsers($"/lists/{listId}/users");
                 foreach (string user in usernames)
@@ -348,7 +347,7 @@ public class Program
                             .ValidationErrorMessage("[red]Please enter a valid post URL[/]")
                             .Validate(url =>
                             {
-                                Regex regex = new Regex("https://onlyfans\\.com/[0-9]+/[A-Za-z0-9]+", RegexOptions.IgnoreCase);
+                                Regex regex = OnlyFansUrlRegex();
                                 if (regex.IsMatch(url))
                                 {
                                     return ValidationResult.Success();
@@ -397,18 +396,18 @@ public class Program
                     string path = "";
                     if (!string.IsNullOrEmpty(Config.DownloadPath))
                     {
-                        path = System.IO.Path.Combine(Config.DownloadPath, user.Key);
+                        path = Path.Combine(Config.DownloadPath, user.Key);
                     }
                     else
                     {
-                        path = $"__user_data__/sites/OnlyFans/{user.Key}"; 
+                        path = $"__user_data__/sites/OnlyFans/{user.Key}";
                     }
 
                     await dBHelper.CheckUsername(user, path);
 
                     if (!Directory.Exists(path))
                     {
-                        Directory.CreateDirectory(path); 
+                        Directory.CreateDirectory(path);
                         AnsiConsole.Markup($"[red]Created folder for {user.Key}\n[/]");
                     }
                     else
@@ -668,8 +667,8 @@ public class Program
                             }
 
 
-                            Purchased.Medium? mediaInfo = paidMessageCollection.PaidMessageMedia.FirstOrDefault(m => m.id == paidMessageKVP.Key);
-                            Purchased.List? messageInfo = paidMessageCollection.PaidMessageObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
+                            Purchased.Medium mediaInfo = paidMessageCollection.PaidMessageMedia.FirstOrDefault(m => m.id == paidMessageKVP.Key);
+                            Purchased.List messageInfo = paidMessageCollection.PaidMessageObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
 
                             isNew = await downloadContext.DownloadHelper.DownloadPurchasedMessageDRMVideo(
                                 policy: policy,
@@ -699,7 +698,7 @@ public class Program
                     }
                     else
                     {
-                        Purchased.Medium? mediaInfo = paidMessageCollection.PaidMessageMedia.FirstOrDefault(m => m.id == paidMessageKVP.Key);
+                        Purchased.Medium mediaInfo = paidMessageCollection.PaidMessageMedia.FirstOrDefault(m => m.id == paidMessageKVP.Key);
                         Purchased.List messageInfo = paidMessageCollection.PaidMessageObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
 
                         isNew = await downloadContext.DownloadHelper.DownloadPurchasedMedia(
@@ -789,8 +788,8 @@ public class Program
                             {
                                 decryptionKey = await downloadContext.ApiHelper.GetDecryptionKeyNew(drmHeaders, $"https://onlyfans.com/api2/v2/users/media/{mediaId}/drm/message/{messageId}?type=widevine", pssh);
                             }
-                            Messages.Medium? mediaInfo = messages.MessageMedia.FirstOrDefault(m => m.id == messageKVP.Key);
-                            Messages.List? messageInfo = messages.MessageObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
+                            Messages.Medium mediaInfo = messages.MessageMedia.FirstOrDefault(m => m.id == messageKVP.Key);
+                            Messages.List messageInfo = messages.MessageObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
 
                             isNew = await downloadContext.DownloadHelper.DownloadMessageDRMVideo(
                                 policy: policy,
@@ -821,8 +820,8 @@ public class Program
                     }
                     else
                     {
-                        Messages.Medium? mediaInfo = messages.MessageMedia.FirstOrDefault(m => m.id == messageKVP.Key);
-                        Messages.List? messageInfo = messages.MessageObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
+                        Messages.Medium mediaInfo = messages.MessageMedia.FirstOrDefault(m => m.id == messageKVP.Key);
+                        Messages.List messageInfo = messages.MessageObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
 
                         isNew = await downloadContext.DownloadHelper.DownloadMessageMedia(
                             url: messageKVP.Value,
@@ -1014,8 +1013,8 @@ public class Program
                             {
                                 decryptionKey = await downloadContext.ApiHelper.GetDecryptionKeyNew(drmHeaders, $"https://onlyfans.com/api2/v2/users/media/{mediaId}/drm/post/{postId}?type=widevine", pssh);
                             }
-                            Archived.Medium? mediaInfo = archived.ArchivedPostMedia.FirstOrDefault(m => m.id == archivedKVP.Key);
-                            Archived.List? postInfo = archived.ArchivedPostObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
+                            Archived.Medium mediaInfo = archived.ArchivedPostMedia.FirstOrDefault(m => m.id == archivedKVP.Key);
+                            Archived.List postInfo = archived.ArchivedPostObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
 
                             isNew = await downloadContext.DownloadHelper.DownloadArchivedPostDRMVideo(
                                 policy: policy,
@@ -1045,8 +1044,8 @@ public class Program
                     }
                     else
                     {
-                        Archived.Medium? mediaInfo = archived.ArchivedPostMedia.FirstOrDefault(m => m.id == archivedKVP.Key);
-                        Archived.List? postInfo = archived.ArchivedPostObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
+                        Archived.Medium mediaInfo = archived.ArchivedPostMedia.FirstOrDefault(m => m.id == archivedKVP.Key);
+                        Archived.List postInfo = archived.ArchivedPostObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
 
                         isNew = await downloadContext.DownloadHelper.DownloadArchivedMedia(
                             url: archivedKVP.Value,
@@ -1173,8 +1172,8 @@ public class Program
                 {
                     try
                     {
-                        Post.Medium? mediaInfo = posts.PostMedia.FirstOrDefault(m => (m?.id == postKVP.Key) == true);
-                        Post.List? postInfo = posts.PostObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
+                        Post.Medium mediaInfo = posts.PostMedia.FirstOrDefault(m => (m?.id == postKVP.Key) == true);
+                        Post.List postInfo = posts.PostObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
 
                         isNew = await downloadContext.DownloadHelper.DownloadPostMedia(
                             url: postKVP.Value,
@@ -1270,8 +1269,8 @@ public class Program
                     {
                         decryptionKey = await downloadContext.ApiHelper.GetDecryptionKeyNew(drmHeaders, $"https://onlyfans.com/api2/v2/users/media/{mediaId}/drm/post/{postId}?type=widevine", pssh);
                     }
-                    Purchased.Medium? mediaInfo = purchasedPosts.PaidPostMedia.FirstOrDefault(m => m.id == purchasedPostKVP.Key);
-                    Purchased.List? postInfo = purchasedPosts.PaidPostObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
+                    Purchased.Medium mediaInfo = purchasedPosts.PaidPostMedia.FirstOrDefault(m => m.id == purchasedPostKVP.Key);
+                    Purchased.List postInfo = purchasedPosts.PaidPostObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
 
                     isNew = await downloadContext.DownloadHelper.DownloadPurchasedPostDRMVideo(
                         policy: policy,
@@ -1501,8 +1500,8 @@ public class Program
                             }
 
 
-                            Purchased.Medium? mediaInfo = paidMessageCollection.PaidMessageMedia.FirstOrDefault(m => m.id == paidMessageKVP.Key);
-                            Purchased.List? messageInfo = paidMessageCollection.PaidMessageObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
+                            Purchased.Medium mediaInfo = paidMessageCollection.PaidMessageMedia.FirstOrDefault(m => m.id == paidMessageKVP.Key);
+                            Purchased.List messageInfo = paidMessageCollection.PaidMessageObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
 
                             isNew = await downloadContext.DownloadHelper.DownloadPurchasedMessageDRMVideo(
                                 policy: policy,
@@ -1532,7 +1531,7 @@ public class Program
                     }
                     else
                     {
-                        Purchased.Medium? mediaInfo = paidMessageCollection.PaidMessageMedia.FirstOrDefault(m => m.id == paidMessageKVP.Key);
+                        Purchased.Medium mediaInfo = paidMessageCollection.PaidMessageMedia.FirstOrDefault(m => m.id == paidMessageKVP.Key);
                         Purchased.List messageInfo = paidMessageCollection.PaidMessageObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
 
                         isNew = await downloadContext.DownloadHelper.DownloadPurchasedMedia(
@@ -1658,8 +1657,8 @@ public class Program
                 {
                     try
                     {
-                        Streams.Medium? mediaInfo = streams.StreamMedia.FirstOrDefault(m => (m?.id == streamKVP.Key) == true);
-                        Streams.List? streamInfo = streams.StreamObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
+                        Streams.Medium mediaInfo = streams.StreamMedia.FirstOrDefault(m => (m?.id == streamKVP.Key) == true);
+                        Streams.List streamInfo = streams.StreamObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
 
                         isNew = await downloadContext.DownloadHelper.DownloadStreamMedia(
                             url: streamKVP.Value,
@@ -1773,8 +1772,8 @@ public class Program
                 {
                     try
                     {
-                        SinglePost.Medium? mediaInfo = post.SinglePostMedia.FirstOrDefault(m => (m?.id == postKVP.Key) == true);
-                        SinglePost? postInfo = post.SinglePostObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
+                        SinglePost.Medium mediaInfo = post.SinglePostMedia.FirstOrDefault(m => (m?.id == postKVP.Key) == true);
+                        SinglePost postInfo = post.SinglePostObjects.FirstOrDefault(p => p?.media?.Contains(mediaInfo) == true);
 
                         isNew = await downloadContext.DownloadHelper.DownloadPostMedia(
                             url: postKVP.Value,
@@ -1829,9 +1828,11 @@ public class Program
                 case "[red]List[/]":
                     while (true)
                     {
-                        var listSelectionPrompt = new MultiSelectionPrompt<string>();
-                        listSelectionPrompt.Title = "[red]Select List[/]";
-                        listSelectionPrompt.PageSize = 10;
+                        var listSelectionPrompt = new MultiSelectionPrompt<string>
+                        {
+                            Title = "[red]Select List[/]",
+                            PageSize = 10
+                        };
                         listSelectionPrompt.AddChoice("[red]Go Back[/]");
                         foreach (string key in lists.Keys.Select(k => $"[red]{k}[/]").ToList())
                         {
@@ -1846,7 +1847,7 @@ public class Program
                         else
                         {
                             hasSelectedUsers = true;
-                            List<string> listUsernames = new();
+                            List<string> listUsernames = [];
                             foreach (var item in listSelection)
                             {
                                 int listId = lists[item.Replace("[red]", "").Replace("[/]", "")];
@@ -1869,7 +1870,7 @@ public class Program
                         selectedNamesPrompt.MoreChoicesText("[grey](Move up and down to reveal more choices)[/]");
                         selectedNamesPrompt.InstructionsText("[grey](Press <space> to select, <enter> to accept)[/]\n[grey](Press A-Z to easily navigate the list)[/]");
                         selectedNamesPrompt.Title("[red]Select users[/]");
-                        selectedNamesPrompt.PageSize(10);
+                        selectedNamesPrompt.PageSize(20);
                         selectedNamesPrompt.AddChoice("[red]Go Back[/]");
                         foreach (string key in users.Keys.OrderBy(k => k).Select(k => $"[red]{k}[/]").ToList())
                         {
@@ -1980,8 +1981,8 @@ public class Program
     {
         if (lists.Count > 0)
         {
-            return new List<string>
-            {
+            return
+            [
                 "[red]Select All[/]",
                 "[red]List[/]",
                 "[red]Custom[/]",
@@ -1989,19 +1990,19 @@ public class Program
                 "[red]Download Purchased Tab[/]",
                 "[red]Edit config.json[/]",
                 "[red]Exit[/]"
-            };
+            ];
         }
         else
         {
-            return new List<string>
-            {
+            return
+            [
                 "[red]Select All[/]",
                 "[red]Custom[/]",
                 "[red]Download Single Post[/]",
                 "[red]Download Purchased Tab[/]",
                 "[red]Edit config.json[/]",
                 "[red]Exit[/]"
-            };
+            ];
         }
     }
 
@@ -2010,7 +2011,7 @@ public class Program
         char[] invalidChars = System.IO.Path.GetInvalidPathChars();
         char[] foundInvalidChars = path.Where(c => invalidChars.Contains(c)).ToArray();
 
-        if (foundInvalidChars.Any())
+        if (foundInvalidChars.Length != 0)
         {
             AnsiConsole.Markup($"[red]Invalid characters found in path {path}:[/] {string.Join(", ", foundInvalidChars)}\n");
             return false;
@@ -2036,22 +2037,22 @@ public class Program
         List<ProgressColumn> progressColumns;
         if (showScrapeSize)
         {
-            progressColumns = new List<ProgressColumn>()
-            {
+            progressColumns =
+            [
                 new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new DownloadedColumn(), new RemainingTimeColumn()
-            };
+            ];
         }
         else
         {
-            progressColumns = new List<ProgressColumn>()
-            {
+            progressColumns =
+            [
                 new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn()
-            };
+            ];
         }
-        return progressColumns.ToArray();
+        return [.. progressColumns];
     }
 
-    public static string? GetFullPath(string filename)
+    public static string GetFullPath(string filename)
     {
         if (File.Exists(filename))
         {
@@ -2069,4 +2070,7 @@ public class Program
         }
         return null;
     }
+
+    [GeneratedRegex("https://onlyfans\\.com/[0-9]+/[A-Za-z0-9]+", RegexOptions.IgnoreCase, "en-US")]
+    private static partial Regex OnlyFansUrlRegex();
 }

@@ -1,17 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace OF_DL.Entities
 {
     public class User
     {
         public string view { get; set; }
-        public string? avatar { get; set; }
+        public string avatar { get; set; }
         public AvatarThumbs avatarThumbs { get; set; }
-        public string? header { get; set; }
+        public string header { get; set; }
         public HeaderSize headerSize { get; set; }
         public HeaderThumbs headerThumbs { get; set; }
         public int? id { get; set; }
@@ -32,7 +26,7 @@ namespace OF_DL.Entities
         public int? tipsMax { get; set; }
         public bool? canEarn { get; set; }
         public bool? canAddSubscriber { get; set; }
-        public string? subscribePrice { get; set; }
+        public string subscribePrice { get; set; }
         public string displayName { get; set; }
         public string notice { get; set; }
         public bool? isPaywallRequired { get; set; }
@@ -46,7 +40,7 @@ namespace OF_DL.Entities
         public DateTime? subscribedByExpireDate { get; set; }
         public bool? subscribedByAutoprolong { get; set; }
         public bool? subscribedIsExpiredNow { get; set; }
-        public string? currentSubscribePrice { get; set; }
+        public string currentSubscribePrice { get; set; }
         public bool? subscribedOn { get; set; }
         public bool? subscribedOnExpiredNow { get; set; }
         public string subscribedOnDuration { get; set; }
@@ -76,7 +70,7 @@ namespace OF_DL.Entities
         public bool? hasPinnedPosts { get; set; }
         public bool? hasLabels { get; set; }
         public bool? canChat { get; set; }
-        public string? callPrice { get; set; }
+        public string callPrice { get; set; }
         public bool? isPrivateRestriction { get; set; }
         public bool? showSubscribersCount { get; set; }
         public bool? showMediaCount { get; set; }
@@ -131,8 +125,8 @@ namespace OF_DL.Entities
             public DateTime? startDate { get; set; }
             public DateTime? expireDate { get; set; }
             public object cancelDate { get; set; }
-            public string? price { get; set; }
-            public string? regularPrice { get; set; }
+            public string price { get; set; }
+            public string regularPrice { get; set; }
             public int? discount { get; set; }
             public int? earningId { get; set; }
             public string action { get; set; }
@@ -144,49 +138,49 @@ namespace OF_DL.Entities
 
         public class SubscribedByData
         {
-            public string? price { get; set; }
-            public string? newPrice { get; set; }
-            public string? regularPrice { get; set; }
-            public string? subscribePrice { get; set; }
+            public string price { get; set; }
+            public string newPrice { get; set; }
+            public string regularPrice { get; set; }
+            public string subscribePrice { get; set; }
             public int? discountPercent { get; set; }
             public int? discountPeriod { get; set; }
             public DateTime? subscribeAt { get; set; }
             public DateTime? expiredAt { get; set; }
-            public object? renewedAt { get; set; }
-            public object? discountFinishedAt { get; set; }
-            public object? discountStartedAt { get; set; }
-            public string? status { get; set; }
+            public object renewedAt { get; set; }
+            public object discountFinishedAt { get; set; }
+            public object discountStartedAt { get; set; }
+            public string status { get; set; }
             public bool? isMuted { get; set; }
-            public string? unsubscribeReason { get; set; }
-            public string? duration { get; set; }
+            public string unsubscribeReason { get; set; }
+            public string duration { get; set; }
             public bool? showPostsInFeed { get; set; }
-            public List<Subscribe>? subscribes { get; set; }
+            public List<Subscribe> subscribes { get; set; }
         }
 
         public class SubscribedOnData
         {
-            public string? price { get; set; }
-            public string? newPrice { get; set; }
-            public string? regularPrice { get; set; }
-            public string? subscribePrice { get; set; }
+            public string price { get; set; }
+            public string newPrice { get; set; }
+            public string regularPrice { get; set; }
+            public string subscribePrice { get; set; }
             public int? discountPercent { get; set; }
             public int? discountPeriod { get; set; }
             public DateTime? subscribeAt { get; set; }
             public DateTime? expiredAt { get; set; }
             public DateTime? renewedAt { get; set; }
-            public object? discountFinishedAt { get; set; }
-            public object? discountStartedAt { get; set; }
-            public object? status { get; set; }
+            public object discountFinishedAt { get; set; }
+            public object discountStartedAt { get; set; }
+            public object status { get; set; }
             public bool? isMuted { get; set; }
-            public string? unsubscribeReason { get; set; }
-            public string? duration { get; set; }
-            public string? tipsSumm { get; set; }
-            public string? subscribesSumm { get; set; }
-            public string? messagesSumm { get; set; }
-            public string? postsSumm { get; set; }
-            public string? streamsSumm { get; set; }
-            public string? totalSumm { get; set; }
-            public List<Subscribe>? subscribes { get; set; }
+            public string unsubscribeReason { get; set; }
+            public string duration { get; set; }
+            public string tipsSumm { get; set; }
+            public string subscribesSumm { get; set; }
+            public string messagesSumm { get; set; }
+            public string postsSumm { get; set; }
+            public string streamsSumm { get; set; }
+            public string totalSumm { get; set; }
+            public List<Subscribe> subscribes { get; set; }
         }
     }
 }

@@ -1,9 +1,4 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace OF_DL.Entities.Stories
 {
@@ -14,7 +9,7 @@ namespace OF_DL.Entities.Stories
         public bool isWatched { get; set; }
         public bool isReady { get; set; }
         public List<Medium> media { get; set; }
-        public DateTime createdAt { get; set; }
+        public DateTime? createdAt { get; set; }
         public object question { get; set; }
         public bool canLike { get; set; }
         public bool isLiked { get; set; }

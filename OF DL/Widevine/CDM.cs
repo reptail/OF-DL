@@ -1,8 +1,4 @@
-﻿using ProtoBuf;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+using ProtoBuf;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
@@ -16,7 +12,7 @@ namespace WidevineClient.Widevine
         {
             ["chrome_1610"] = new CDMDevice("chrome_1610", null, null, null)
         };
-        static Dictionary<string, Session> Sessions { get; set; } = new Dictionary<string, Session>();
+        static Dictionary<string, Session> Sessions { get; set; } = [];
 
         static byte[] CheckPSSH(string psshB64)
         {
@@ -34,16 +30,19 @@ namespace WidevineClient.Widevine
 
             if (!pssh[12..28].SequenceEqual(systemID))
             {
-                List<byte> newPssh = new List<byte>() { 0, 0, 0 };
-                newPssh.Add((byte)(32 + pssh.Length));
-                newPssh.AddRange(Encoding.UTF8.GetBytes("pssh"));
-                newPssh.AddRange(new byte[] { 0, 0, 0, 0 });
-                newPssh.AddRange(systemID);
-                newPssh.AddRange(new byte[] { 0, 0, 0, 0 });
+                List<byte> newPssh =
+                [
+                    0, 0, 0,
+                    (byte)(32 + pssh.Length),
+                    .. Encoding.UTF8.GetBytes("pssh"),
+                    .. new byte[] { 0, 0, 0, 0 },
+                    .. systemID,
+                    .. new byte[] { 0, 0, 0, 0 },
+                ];
                 newPssh[31] = (byte)(pssh.Length);
                 newPssh.AddRange(pssh);
 
-                return newPssh.ToArray();
+                return [.. newPssh];
             }
             else
             {
@@ -416,7 +415,7 @@ namespace WidevineClient.Widevine
                 cryptoStream.Write(encryptedKey, 0, encryptedKey.Length);
                 decryptedKey = mstream.ToArray();
 
-                List<string> permissions = new List<string>();
+                List<string> permissions = [];
                 if (type == "OperatorSession")
                 {
                     foreach (PropertyInfo perm in key._OperatorSessionKeyPermissions.GetType().GetProperties())
@@ -445,14 +444,14 @@ namespace WidevineClient.Widevine
 
         public static DerivedKeys DeriveKeys(byte[] message, byte[] key)
         {
-            byte[] encKeyBase = Encoding.UTF8.GetBytes("ENCRYPTION").Concat(new byte[] { 0x0, }).Concat(message).Concat(new byte[] { 0x0, 0x0, 0x0, 0x80 }).ToArray();
-            byte[] authKeyBase = Encoding.UTF8.GetBytes("AUTHENTICATION").Concat(new byte[] { 0x0, }).Concat(message).Concat(new byte[] { 0x0, 0x0, 0x2, 0x0 }).ToArray();
+            byte[] encKeyBase = [.. Encoding.UTF8.GetBytes("ENCRYPTION"), .. new byte[] { 0x0, }, .. message, .. new byte[] { 0x0, 0x0, 0x0, 0x80 }];
+            byte[] authKeyBase = [.. Encoding.UTF8.GetBytes("AUTHENTICATION"), .. new byte[] { 0x0, }, .. message, .. new byte[] { 0x0, 0x0, 0x2, 0x0 }];
 
-            byte[] encKey = new byte[] { 0x01 }.Concat(encKeyBase).ToArray();
-            byte[] authKey1 = new byte[] { 0x01 }.Concat(authKeyBase).ToArray();
-            byte[] authKey2 = new byte[] { 0x02 }.Concat(authKeyBase).ToArray();
-            byte[] authKey3 = new byte[] { 0x03 }.Concat(authKeyBase).ToArray();
-            byte[] authKey4 = new byte[] { 0x04 }.Concat(authKeyBase).ToArray();
+            byte[] encKey = [0x01, .. encKeyBase];
+            byte[] authKey1 = [0x01, .. authKeyBase];
+            byte[] authKey2 = [0x02, .. authKeyBase];
+            byte[] authKey3 = [0x03, .. authKeyBase];
+            byte[] authKey4 = [0x04, .. authKeyBase];
 
             byte[] encCmacKey = CryptoUtils.GetCMACDigest(encKey, key);
             byte[] authCmacKey1 = CryptoUtils.GetCMACDigest(authKey1, key);
@@ -460,8 +459,8 @@ namespace WidevineClient.Widevine
             byte[] authCmacKey3 = CryptoUtils.GetCMACDigest(authKey3, key);
             byte[] authCmacKey4 = CryptoUtils.GetCMACDigest(authKey4, key);
 
-            byte[] authCmacCombined1 = authCmacKey1.Concat(authCmacKey2).ToArray();
-            byte[] authCmacCombined2 = authCmacKey3.Concat(authCmacKey4).ToArray();
+            byte[] authCmacCombined1 = [.. authCmacKey1, .. authCmacKey2];
+            byte[] authCmacCombined2 = [.. authCmacKey3, .. authCmacKey4];
 
             return new DerivedKeys
             {

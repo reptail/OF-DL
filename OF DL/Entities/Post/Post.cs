@@ -1,10 +1,4 @@
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static OF_DL.Entities.Messages.Messages;
 
 namespace OF_DL.Entities.Post;
 
@@ -89,7 +83,7 @@ public class Post
         public bool isOpened { get; set; }
         public bool? canToggleFavorite { get; set; }
         public object streamId { get; set; }
-        public string? price { get; set; }
+        public string price { get; set; }
         public bool? hasVoting { get; set; }
         public bool? isAddedToBookmarks { get; set; }
         public bool isArchived { get; set; }
@@ -111,8 +105,8 @@ public class Post
 
     public class Manifest
     {
-        public string? hls { get; set; }
-        public string? dash { get; set; }
+        public string hls { get; set; }
+        public string dash { get; set; }
     }
 
     public class Medium
@@ -149,7 +143,7 @@ public class Post
 
     public class Source
     {
-        public string? source { get; set; }
+        public string source { get; set; }
         public int? width { get; set; }
         public int? height { get; set; }
         public int? size { get; set; }

@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace OF_DL.Entities.Lists
+﻿namespace OF_DL.Entities.Lists
 {
-	public class UserList
+    public class UserList
 	{
 		public List<List> list { get; set; }
 		public bool? hasMore { get; set; }

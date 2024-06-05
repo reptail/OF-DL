@@ -37,11 +37,11 @@ namespace OF_DL.Entities
         public bool IncludeRestrictedSubscriptions { get; set; }
         [ToggleableConfig]
         public bool SkipAds { get; set; } = false;
-        public string? DownloadPath { get; set; } = string.Empty;
-        public string? PaidPostFileNameFormat { get; set; } = string.Empty;
-        public string? PostFileNameFormat { get; set; } = string.Empty;
-        public string? PaidMessageFileNameFormat { get; set; } = string.Empty;
-        public string? MessageFileNameFormat { get; set; } = string.Empty;
+        public string DownloadPath { get; set; } = string.Empty;
+        public string PaidPostFileNameFormat { get; set; } = string.Empty;
+        public string PostFileNameFormat { get; set; } = string.Empty;
+        public string PaidMessageFileNameFormat { get; set; } = string.Empty;
+        public string MessageFileNameFormat { get; set; } = string.Empty;
         [ToggleableConfig]
         public bool RenameExistingFilesWhenCustomFormatIsSelected { get; set; } = false;
         public int? Timeout { get; set; } = -1;
@@ -79,7 +79,7 @@ namespace OF_DL.Entities
         public string NonInteractiveModeListName { get; set; } = string.Empty;
         [ToggleableConfig]
         public bool NonInteractiveModePurchasedTab { get; set; } = false;
-        public string? FFmpegPath { get; set; } = string.Empty;
+        public string FFmpegPath { get; set; } = string.Empty;
 
         public Dictionary<string, CreatorConfig> CreatorConfigs { get; set; } = new Dictionary<string, CreatorConfig>();
     }

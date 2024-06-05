@@ -3,8 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace OF_DL.Helpers
 {
@@ -19,7 +17,7 @@ namespace OF_DL.Helpers
 
         public async Task<Dictionary<string, string>> GetFilename(object obj1, object obj2, object obj3, List<string> selectedProperties, string username, Dictionary<string, int> users = null)
         {
-            Dictionary<string, string> values = new();
+            Dictionary<string, string> values = [];
             Type type1 = obj1.GetType();
             Type type2 = obj2.GetType();
             PropertyInfo[] properties1 = type1.GetProperties();
@@ -67,10 +65,10 @@ namespace OF_DL.Helpers
                         }
                         
                     }
-                    PropertyInfo? property = Array.Find(properties2, p => p.Name.Equals(propertyName.Replace("media", ""), StringComparison.OrdinalIgnoreCase));
+                    PropertyInfo property = Array.Find(properties2, p => p.Name.Equals(propertyName.Replace("media", ""), StringComparison.OrdinalIgnoreCase));
                     if (property != null)
                     {
-                        object? propertyValue = property.GetValue(obj2);
+                        object propertyValue = property.GetValue(obj2);
                         if (propertyValue != null)
                         {
                             if (propertyValue is DateTime dateTimeValue)
@@ -184,7 +182,7 @@ namespace OF_DL.Helpers
             return value;
         }
 
-        public async Task<string> BuildFilename(string fileFormat, Dictionary<string, string> values)
+        public Task<string> BuildFilename(string fileFormat, Dictionary<string, string> values)
         {
             foreach (var kvp in values)
             {
@@ -192,7 +190,8 @@ namespace OF_DL.Helpers
                 fileFormat = fileFormat.Replace(placeholder, kvp.Value);
             }
 
-            return WidevineClient.Utils.RemoveInvalidFileNameChars($"{fileFormat}");
+            string trimmedFileFormat = WidevineClient.Utils.RemoveInvalidFileNameChars($"{fileFormat}");
+            return Task.FromResult(trimmedFileFormat);
         }
     }
 }

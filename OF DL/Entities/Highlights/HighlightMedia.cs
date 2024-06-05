@@ -1,13 +1,8 @@
 ﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace OF_DL.Entities.Highlights
 {
-	public class HighlightMedia
+    public class HighlightMedia
 	{
 		public int id { get; set; }
 		public int userId { get; set; }

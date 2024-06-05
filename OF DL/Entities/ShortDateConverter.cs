@@ -1,5 +1,4 @@
 using Newtonsoft.Json.Converters;
-using System.Runtime.Serialization;
 
 namespace OF_DL.Entities
 {

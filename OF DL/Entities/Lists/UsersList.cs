@@ -1,12 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace OF_DL.Entities.Lists
 {
-	public class UsersList
+    public class UsersList
 	{
 		public string view { get; set; }
 		public string avatar { get; set; }
@@ -32,7 +26,7 @@ namespace OF_DL.Entities.Lists
 		public int? tipsMax { get; set; }
 		public bool? canEarn { get; set; }
 		public bool? canAddSubscriber { get; set; }
-		public string? subscribePrice { get; set; }
+		public string subscribePrice { get; set; }
 		public List<SubscriptionBundle> subscriptionBundles { get; set; }
 		public string displayName { get; set; }
 		public string notice { get; set; }
@@ -47,7 +41,7 @@ namespace OF_DL.Entities.Lists
 		public DateTime? subscribedByExpireDate { get; set; }
 		public bool? subscribedByAutoprolong { get; set; }
 		public bool? subscribedIsExpiredNow { get; set; }
-		public string? currentSubscribePrice { get; set; }
+		public string currentSubscribePrice { get; set; }
 		public bool? subscribedOn { get; set; }
 		public bool? subscribedOnExpiredNow { get; set; }
 		public string subscribedOnDuration { get; set; }
@@ -99,9 +93,9 @@ namespace OF_DL.Entities.Lists
 			public DateTime? startDate { get; set; }
 			public DateTime? expireDate { get; set; }
 			public object cancelDate { get; set; }
-			public string? price { get; set; }
-			public string? regularPrice { get; set; }
-			public string? discount { get; set; }
+			public string price { get; set; }
+			public string regularPrice { get; set; }
+			public string discount { get; set; }
 			public int? earningId { get; set; }
 			public string action { get; set; }
 			public string type { get; set; }
@@ -112,12 +106,12 @@ namespace OF_DL.Entities.Lists
 
 		public class SubscribedByData
 		{
-			public string? price { get; set; }
-			public string? newPrice { get; set; }
-			public string? regularPrice { get; set; }
-			public string? subscribePrice { get; set; }
-			public string? discountPercent { get; set; }
-			public string? discountPeriod { get; set; }
+			public string price { get; set; }
+			public string newPrice { get; set; }
+			public string regularPrice { get; set; }
+			public string subscribePrice { get; set; }
+			public string discountPercent { get; set; }
+			public string discountPeriod { get; set; }
 			public DateTime? subscribeAt { get; set; }
 			public DateTime? expiredAt { get; set; }
 			public object renewedAt { get; set; }
@@ -133,12 +127,12 @@ namespace OF_DL.Entities.Lists
 
 		public class SubscribedOnData
 		{
-			public string? price { get; set; }
-			public string? newPrice { get; set; }
-			public string? regularPrice { get; set; }
-			public string? subscribePrice { get; set; }
-			public string? discountPercent { get; set; }
-			public string? discountPeriod { get; set; }
+			public string price { get; set; }
+			public string newPrice { get; set; }
+			public string regularPrice { get; set; }
+			public string subscribePrice { get; set; }
+			public string discountPercent { get; set; }
+			public string discountPeriod { get; set; }
 			public DateTime? subscribeAt { get; set; }
 			public DateTime? expiredAt { get; set; }
 			public object renewedAt { get; set; }
@@ -148,12 +142,12 @@ namespace OF_DL.Entities.Lists
 			public bool? isMuted { get; set; }
 			public string unsubscribeReason { get; set; }
 			public string duration { get; set; }
-			public string? tipsSumm { get; set; }
-			public string? subscribesSumm { get; set; }
-			public string? messagesSumm { get; set; }
-			public string? postsSumm { get; set; }
-			public string? streamsSumm { get; set; }
-			public string? totalSumm { get; set; }
+			public string tipsSumm { get; set; }
+			public string subscribesSumm { get; set; }
+			public string messagesSumm { get; set; }
+			public string postsSumm { get; set; }
+			public string streamsSumm { get; set; }
+			public string totalSumm { get; set; }
 			public DateTime? lastActivity { get; set; }
 			public int? recommendations { get; set; }
 			public List<object> subscribes { get; set; }
@@ -162,9 +156,9 @@ namespace OF_DL.Entities.Lists
 		public class SubscriptionBundle
 		{
 			public int? id { get; set; }
-			public string? discount { get; set; }
-			public string? duration { get; set; }
-			public string? price { get; set; }
+			public string discount { get; set; }
+			public string duration { get; set; }
+			public string price { get; set; }
 			public bool? canBuy { get; set; }
 		}
 

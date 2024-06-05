@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 
 namespace WidevineClient.Crypto
 {
@@ -62,7 +59,7 @@ namespace WidevineClient.Crypto
             byte[] h = SHA1.Create().ComputeHash(m_prime);
 
             byte[] ps = Enumerable.Repeat((byte)0, emLen - hLen - hLen - 2).ToArray();
-            byte[] db = ps.Concat(new byte[] { 0x01 }).Concat(salt).ToArray();
+            byte[] db = [.. ps, .. new byte[] { 0x01 }, .. salt];
 
             byte[] dbMask = MGF1(h, emLen - hLen - 1);
 
@@ -72,7 +69,7 @@ namespace WidevineClient.Crypto
 
             maskedDb[0] = (byte)(maskedDb[0] & ~lmask);
 
-            byte[] padded = maskedDb.Concat(h).Concat(new byte[] { 0xBC }).ToArray();
+            byte[] padded = [.. maskedDb, .. h, .. new byte[] { 0xBC }];
 
             return padded;
         }
@@ -107,15 +104,15 @@ namespace WidevineClient.Crypto
         {
             SHA1 hobj = SHA1.Create();
             int hLen = hobj.HashSize / 8;
-            List<byte> T = new List<byte>();
+            List<byte> T = [];
             for (int i = 0; i < (int)Math.Ceiling(((double)maskLen / (double)hLen)); i++)
             {
                 byte[] c = BitConverter.GetBytes(i);
                 Array.Reverse(c);
-                byte[] digest = hobj.ComputeHash(seed.Concat(c).ToArray());
+                byte[] digest = hobj.ComputeHash([.. seed, .. c]);
                 T.AddRange(digest);
             }
-            return T.GetRange(0, maskLen).ToArray();
+            return [.. T.GetRange(0, maskLen)];
         }
     }
 }

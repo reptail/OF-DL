@@ -3,25 +3,14 @@ using OF_DL.Entities.Archived;
 using OF_DL.Entities.Messages;
 using OF_DL.Entities.Post;
 using OF_DL.Entities.Purchased;
-using OF_DL.Entities.Stories;
 using OF_DL.Entities.Streams;
 using OF_DL.Enumerations;
 using OF_DL.Utils;
-using Org.BouncyCastle.Asn1.Tsp;
-using Org.BouncyCastle.Asn1.X509;
 using Serilog;
 using Spectre.Console;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using static OF_DL.Entities.Lists.UserList;
 
 namespace OF_DL.Helpers;
 
@@ -169,7 +158,7 @@ public class DownloadHelper : IDownloadHelper
             };
         }
 
-        List<string> properties = new();
+        List<string> properties = [];
         string pattern = @"\{(.*?)\}";
         MatchCollection matches = Regex.Matches(filenameFormat, pattern);
         properties.AddRange(matches.Select(match => match.Groups[1].Value));
@@ -604,8 +593,8 @@ public class DownloadHelper : IDownloadHelper
             StartInfo = ffmpegStartInfo
         };
         ffmpegProcess.Start();
-        var ffmpegErrors = ffmpegProcess.StandardError.ReadToEnd();
-        ffmpegProcess.WaitForExit();
+        var ffmpegErrors = await ffmpegProcess.StandardError.ReadToEndAsync();
+        await ffmpegProcess.WaitForExitAsync();
 
         if (ffmpegProcess.ExitCode != 0)
         {
@@ -774,7 +763,7 @@ public class DownloadHelper : IDownloadHelper
     }
 
     #endregion
-    public async Task DownloadAvatarHeader(string? avatarUrl, string? headerUrl, string folder, string username)
+    public async Task DownloadAvatarHeader(string avatarUrl, string headerUrl, string folder, string username)
     {
         try
         {
@@ -814,7 +803,7 @@ public class DownloadHelper : IDownloadHelper
                 memoryStream.Seek(0, SeekOrigin.Begin);
 
                 MD5 md5 = MD5.Create();
-                byte[] hash = md5.ComputeHash(memoryStream);
+                byte[] hash = await md5.ComputeHashAsync(memoryStream);
                 memoryStream.Seek(0, SeekOrigin.Begin);
                 if (!avatarMD5Hashes.Contains(BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant()))
                 {
@@ -858,7 +847,7 @@ public class DownloadHelper : IDownloadHelper
                 memoryStream.Seek(0, SeekOrigin.Begin);
 
                 MD5 md5 = MD5.Create();
-                byte[] hash = md5.ComputeHash(memoryStream);
+                byte[] hash = await md5.ComputeHashAsync(memoryStream);
                 memoryStream.Seek(0, SeekOrigin.Begin);
                 if (!headerMD5Hashes.Contains(BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant()))
                 {
@@ -910,7 +899,7 @@ public class DownloadHelper : IDownloadHelper
 
             if (!string.IsNullOrEmpty(filenameFormat) && messageInfo != null && messageMedia != null)
             {
-                List<string> properties = new();
+                List<string> properties = [];
                 string pattern = @"\{(.*?)\}";
                 MatchCollection matches = Regex.Matches(filenameFormat, pattern);
                 foreach (Match match in matches)
@@ -993,7 +982,7 @@ public class DownloadHelper : IDownloadHelper
 
             if (!string.IsNullOrEmpty(filenameFormat) && messageInfo != null && messageMedia != null)
             {
-                List<string> properties = new();
+                List<string> properties = [];
                 string pattern = @"\{(.*?)\}";
                 MatchCollection matches = Regex.Matches(filenameFormat, pattern);
                 foreach (Match match in matches)
@@ -1076,7 +1065,7 @@ public class DownloadHelper : IDownloadHelper
 
             if (!string.IsNullOrEmpty(filenameFormat) && postInfo != null && postMedia != null)
             {
-                List<string> properties = new();
+                List<string> properties = [];
                 string pattern = @"\{(.*?)\}";
                 MatchCollection matches = Regex.Matches(filenameFormat, pattern);
                 foreach (Match match in matches)
@@ -1157,7 +1146,7 @@ public class DownloadHelper : IDownloadHelper
 
             if (!string.IsNullOrEmpty(filenameFormat) && postInfo != null && postMedia != null)
             {
-                List<string> properties = new();
+                List<string> properties = [];
                 string pattern = @"\{(.*?)\}";
                 MatchCollection matches = Regex.Matches(filenameFormat, pattern);
                 foreach (Match match in matches)
@@ -1238,7 +1227,7 @@ public class DownloadHelper : IDownloadHelper
 
             if (!string.IsNullOrEmpty(filenameFormat) && streamInfo != null && streamMedia != null)
             {
-                List<string> properties = new();
+                List<string> properties = [];
                 string pattern = @"\{(.*?)\}";
                 MatchCollection matches = Regex.Matches(filenameFormat, pattern);
                 foreach (Match match in matches)
@@ -1321,7 +1310,7 @@ public class DownloadHelper : IDownloadHelper
 
             if (!string.IsNullOrEmpty(filenameFormat) && postInfo != null && postMedia != null)
             {
-                List<string> properties = new();
+                List<string> properties = [];
                 string pattern = @"\{(.*?)\}";
                 MatchCollection matches = Regex.Matches(filenameFormat, pattern);
                 foreach (Match match in matches)
@@ -1396,7 +1385,7 @@ public class DownloadHelper : IDownloadHelper
 
             if (!string.IsNullOrEmpty(filenameFormat) && postInfo != null && postMedia != null)
             {
-                List<string> properties = new();
+                List<string> properties = [];
                 string pattern = @"\{(.*?)\}";
                 MatchCollection matches = Regex.Matches(filenameFormat, pattern);
                 foreach (Match match in matches)

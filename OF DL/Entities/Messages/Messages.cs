@@ -1,13 +1,8 @@
 ﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace OF_DL.Entities.Messages
 {
-	public class Messages
+    public class Messages
 	{
 		public List<List> list { get; set; }
 		public bool hasMore { get; set; }
@@ -65,7 +60,7 @@ namespace OF_DL.Entities.Messages
 			public object giphyId { get; set; }
 			public bool? lockedText { get; set; }
 			public bool? isFree { get; set; }
-			public string? price { get; set; }
+			public string price { get; set; }
 			public bool? isMediaReady { get; set; }
 			public int? mediaCount { get; set; }
 			public List<Medium> media { get; set; }

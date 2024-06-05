@@ -11,7 +11,6 @@ using OF_DL.Entities.Purchased;
 using OF_DL.Entities.Stories;
 using OF_DL.Entities.Streams;
 using OF_DL.Enumurations;
-using Org.BouncyCastle.Asn1.Cmp;
 using Serilog;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -46,14 +45,14 @@ public class APIHelper : IAPIHelper
 
     public async Task<Dictionary<string, string>> GetDynamicHeaders(string path, string queryParams)
     {
-        DynamicRules? root;
+        DynamicRules root;
         var client = new HttpClient();
         var request = new HttpRequestMessage
         {
             Method = HttpMethod.Get,
             RequestUri = new Uri(Constants.DYNAMIC_RULES),
         };
-        using (var vresponse = client.Send(request))
+        using (var vresponse = await client.SendAsync(request))
         {
             vresponse.EnsureSuccessStatusCode();
             var body = await vresponse.Content.ReadAsStringAsync();
@@ -201,7 +200,7 @@ public class APIHelper : IAPIHelper
     {
         try
         {
-            Entities.User? user = new();
+            User user = new();
             int post_limit = 50;
             Dictionary<string, string> getParams = new()
             {
@@ -221,7 +220,7 @@ public class APIHelper : IAPIHelper
 
             response.EnsureSuccessStatusCode();
             var body = await response.Content.ReadAsStringAsync();
-            user = JsonConvert.DeserializeObject<Entities.User>(body, m_JsonSerializerSettings);
+            user = JsonConvert.DeserializeObject<User>(body, m_JsonSerializerSettings);
             return user;
         }
         catch (Exception ex)
@@ -272,7 +271,7 @@ public class APIHelper : IAPIHelper
     {
         try
         {
-            Dictionary<string, int> users = new();
+            Dictionary<string, int> users = [];
             Subscriptions subscriptions = new();
 
             string? body = await BuildHeaderAndExecuteRequests(getParams, endpoint, new HttpClient());
@@ -372,7 +371,7 @@ public class APIHelper : IAPIHelper
                 { "limit", "50" },
                 { "format", "infinite" }
             };
-            Dictionary<string, int> lists = new();
+            Dictionary<string, int> lists = [];
             while (true)
             {
                 string? body = await BuildHeaderAndExecuteRequests(getParams, endpoint, new HttpClient());
@@ -434,7 +433,7 @@ public class APIHelper : IAPIHelper
                 { "offset", offset.ToString() },
                 { "limit", "50" }
             };
-            List<string> users = new();
+            List<string> users = [];
 
             while (true)
             {
@@ -444,7 +443,7 @@ public class APIHelper : IAPIHelper
                     break;
                 }
 
-                List<UsersList>? usersList = JsonConvert.DeserializeObject<List<UsersList>>(body);
+                List<UsersList> usersList = JsonConvert.DeserializeObject<List<UsersList>>(body);
 
                 if (usersList == null || usersList.Count <= 0)
                 {
@@ -484,19 +483,19 @@ public class APIHelper : IAPIHelper
 
     public async Task<Dictionary<long, string>> GetMedia(MediaType mediatype,
                                                          string endpoint,
-                                                         string? username,
+                                                         string username,
                                                          string folder,
                                                          IDownloadConfig config,
                                                          List<long> paid_post_ids)
     {
         try
         {
-            Dictionary<long, string> return_urls = new();
+            Dictionary<long, string> return_urls = [];
             int post_limit = 50;
             int limit = 5;
             int offset = 0;
 
-            Dictionary<string, string> getParams = new();
+            Dictionary<string, string> getParams = [];
 
             switch (mediatype)
             {
@@ -523,14 +522,14 @@ public class APIHelper : IAPIHelper
 
             if (mediatype == MediaType.Stories)
             {
-                var stories = JsonConvert.DeserializeObject<List<Stories>>(body, m_JsonSerializerSettings) ?? new List<Stories>();
-                stories = stories.OrderByDescending(x => x.createdAt).ToList();
+                var stories = JsonConvert.DeserializeObject<List<Stories>>(body, m_JsonSerializerSettings) ?? [];
+                stories = [.. stories.OrderByDescending(x => x.createdAt)];
 
                 foreach (Stories story in stories)
                 {
                     if (story.createdAt != null)
                     {
-                        await m_DBHelper.AddStory(folder, story.id, string.Empty, "0", false, false, story.createdAt);
+                        await m_DBHelper.AddStory(folder, story.id, string.Empty, "0", false, false, story.createdAt.Value);
                     }
                     else
                     {
@@ -570,7 +569,7 @@ public class APIHelper : IAPIHelper
             }
             else if (mediatype == MediaType.Highlights)
             {
-                List<string> highlight_ids = new();
+                List<string> highlight_ids = [];
                 var highlights = JsonConvert.DeserializeObject<Highlights>(body, m_JsonSerializerSettings) ?? new Highlights();
 
                 if (highlights.hasMore)
@@ -715,7 +714,7 @@ public class APIHelper : IAPIHelper
             {
                 if (purchase.responseType == "post" && purchase.media != null && purchase.media.Count > 0)
                 {
-                    List<long> previewids = new();
+                    List<long> previewids = [];
                     if (purchase.previews != null)
                     {
                         for (int i = 0; i < purchase.previews.Count; i++)
@@ -908,7 +907,7 @@ public class APIHelper : IAPIHelper
                         continue;
                     }
                 }
-                List<long> postPreviewIds = new();
+                List<long> postPreviewIds = [];
                 if (post.preview != null && post.preview.Count > 0)
                 {
                     foreach (var id in post.preview)
@@ -1020,7 +1019,7 @@ public class APIHelper : IAPIHelper
 
             if (singlePost != null)
             {
-                List<long> postPreviewIds = new();
+                List<long> postPreviewIds = [];
                 if (singlePost.preview != null && singlePost.preview.Count > 0)
                 {
                     foreach (var id in singlePost.preview)
@@ -1172,7 +1171,7 @@ public class APIHelper : IAPIHelper
 
             foreach (Streams.List stream in streams.list)
             {
-                List<long> streamPreviewIds = new();
+                List<long> streamPreviewIds = [];
                 if (stream.preview != null && stream.preview.Count > 0)
                 {
                     foreach (var id in stream.preview)
@@ -1312,7 +1311,7 @@ public class APIHelper : IAPIHelper
 
             foreach (Archived.List archive in archived.list)
             {
-                List<long> previewids = new();
+                List<long> previewids = [];
                 if (archive.preview != null)
                 {
                     for (int i = 0; i < archive.preview.Count; i++)
@@ -1430,7 +1429,7 @@ public class APIHelper : IAPIHelper
                         continue;
                     }
                 }
-                List<long> messagePreviewIds = new();
+                List<long> messagePreviewIds = [];
                 if (list.previews != null && list.previews.Count > 0)
                 {
                     foreach (var id in list.previews)
@@ -1637,7 +1636,7 @@ public class APIHelper : IAPIHelper
                     paidMessageCollection.PaidMessageObjects.Add(purchase);
                     if (purchase.media != null && purchase.media.Count > 0)
                     {
-                        List<long> previewids = new();
+                        List<long> previewids = [];
                         if (purchase.previews != null)
                         {
                             for (int i = 0; i < purchase.previews.Count; i++)
@@ -1793,7 +1792,7 @@ public class APIHelper : IAPIHelper
     {
         try
         {
-            Dictionary<string, int> purchasedTabUsers = new();
+            Dictionary<string, int> purchasedTabUsers = [];
             Purchased purchased = new();
             int post_limit = 50;
             Dictionary<string, string> getParams = new()
@@ -1939,8 +1938,8 @@ public class APIHelper : IAPIHelper
     {
         try
         {
-            Dictionary<long, List<Purchased.List>> userPurchases = new Dictionary<long, List<Purchased.List>>();
-            List<PurchasedTabCollection> purchasedTabCollections = new();
+            Dictionary<long, List<Purchased.List>> userPurchases = [];
+            List<PurchasedTabCollection> purchasedTabCollections = [];
             Purchased purchased = new();
             int post_limit = 50;
             Dictionary<string, string> getParams = new()
@@ -1991,7 +1990,7 @@ public class APIHelper : IAPIHelper
                     {
                         if (!userPurchases.ContainsKey(purchase.fromUser.id))
                         {
-                            userPurchases.Add(purchase.fromUser.id, new List<Purchased.List>());
+                            userPurchases.Add(purchase.fromUser.id, []);
                         }
                         userPurchases[purchase.fromUser.id].Add(purchase);
                     }
@@ -1999,7 +1998,7 @@ public class APIHelper : IAPIHelper
                     {
                         if (!userPurchases.ContainsKey(purchase.author.id))
                         {
-                            userPurchases.Add(purchase.author.id, new List<Purchased.List>());
+                            userPurchases.Add(purchase.author.id, []);
                         }
                         userPurchases[purchase.author.id].Add(purchase);
                     }
@@ -2020,7 +2019,7 @@ public class APIHelper : IAPIHelper
                         switch (purchase.responseType)
                         {
                             case "post":
-                                List<long> previewids = new();
+                                List<long> previewids = [];
                                 if (purchase.previews != null)
                                 {
                                     for (int i = 0; i < purchase.previews.Count; i++)
@@ -2121,7 +2120,7 @@ public class APIHelper : IAPIHelper
                                 purchasedTabCollection.PaidMessages.PaidMessageObjects.Add(purchase);
                                 if (purchase.media != null && purchase.media.Count > 0)
                                 {
-                                    List<long> paidMessagePreviewids = new();
+                                    List<long> paidMessagePreviewids = [];
                                     if (purchase.previews != null)
                                     {
                                         for (int i = 0; i < purchase.previews.Count; i++)
@@ -2409,7 +2408,7 @@ public class APIHelper : IAPIHelper
     }
 
 
-    public async Task<string> GetDecryptionKeyNew(Dictionary<string, string> drmHeaders, string licenceURL, string pssh)
+    public Task<string> GetDecryptionKeyNew(Dictionary<string, string> drmHeaders, string licenceURL, string pssh)
     {
         try
         {
@@ -2423,7 +2422,7 @@ public class APIHelper : IAPIHelper
             List<ContentKey> keys = cdm.GetKeys();
             if (keys.Count > 0)
             {
-                return keys[0].ToString();
+                return Task.FromResult(keys[0].ToString());
             }
         }
         catch (Exception ex)
@@ -2437,6 +2436,6 @@ public class APIHelper : IAPIHelper
                 Log.Error("Inner Exception: {0}\n\nStackTrace: {1}", ex.InnerException.Message, ex.InnerException.StackTrace);
             }
         }
-        return null;
+        return Task.FromResult(string.Empty);
     }
 }

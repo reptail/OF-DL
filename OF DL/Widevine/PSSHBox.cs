@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-
-namespace WidevineClient.Widevine
+﻿namespace WidevineClient.Widevine
 {
     class PSSHBox
     {
         static readonly byte[] PSSH_HEADER = new byte[] { 0x70, 0x73, 0x73, 0x68 };
 
-        public List<byte[]> KIDs { get; set; } = new List<byte[]>();
+        public List<byte[]> KIDs { get; set; } = [];
         public byte[] Data { get; set; }
 
         PSSHBox(List<byte[]> kids, byte[] data)
@@ -19,7 +15,7 @@ namespace WidevineClient.Widevine
 
         public static PSSHBox FromByteArray(byte[] psshbox)
         {
-            using var stream = new System.IO.MemoryStream(psshbox);
+            using var stream = new MemoryStream(psshbox);
 
             stream.Seek(4, System.IO.SeekOrigin.Current);
             byte[] header = new byte[4];
@@ -36,7 +32,7 @@ namespace WidevineClient.Widevine
                 Array.Reverse(kidCountBytes);
             uint kidCount = BitConverter.ToUInt32(kidCountBytes);
 
-            List<byte[]> kids = new List<byte[]>();
+            List<byte[]> kids = [];
             for (int i = 0; i < kidCount; i++)
             {
                 byte[] kid = new byte[16];

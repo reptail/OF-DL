@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace OF_DL.Entities.Highlights
+﻿namespace OF_DL.Entities.Highlights
 {
-	public class Highlights
+    public class Highlights
 	{
 		public List<List> list { get; set; }
 		public bool hasMore { get; set; }

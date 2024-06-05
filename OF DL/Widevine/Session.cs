@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace WidevineClient.Widevine
+﻿namespace WidevineClient.Widevine
 {
     class Session
     {
@@ -14,7 +12,7 @@ namespace WidevineClient.Widevine
         public SignedLicense License { get; set; }
         public SignedDeviceCertificate ServiceCertificate { get; set; }
         public bool PrivacyMode { get; set; }
-        public List<ContentKey> ContentKeys { get; set; } = new List<ContentKey>();
+        public List<ContentKey> ContentKeys { get; set; } = [];
 
         public Session(byte[] sessionId, dynamic initData, CDMDevice device, bool offline)
         {

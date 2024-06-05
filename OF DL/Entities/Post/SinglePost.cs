@@ -1,9 +1,4 @@
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace OF_DL.Entities.Post
 {
@@ -140,8 +135,8 @@ namespace OF_DL.Entities.Post
         }
         public class Manifest
         {
-            public string? hls { get; set; }
-            public string? dash { get; set; }
+            public string hls { get; set; }
+            public string dash { get; set; }
         }
         public class Signature
         {

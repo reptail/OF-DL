@@ -5,9 +5,6 @@ using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Signers;
 using Org.BouncyCastle.OpenSsl;
 using ProtoBuf;
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Text;
 
 namespace WidevineClient.Widevine
@@ -70,7 +67,7 @@ namespace WidevineClient.Widevine
             int length = data.Length;
             int blockSize = eng.GetInputBlockSize();
 
-            List<byte> plainText = new List<byte>();
+            List<byte> plainText = [];
 
             for (int chunkPosition = 0; chunkPosition < length; chunkPosition += blockSize)
             {
@@ -78,7 +75,7 @@ namespace WidevineClient.Widevine
                 plainText.AddRange(eng.ProcessBlock(data, chunkPosition, chunkSize));
             }
 
-            return plainText.ToArray();
+            return [.. plainText];
         }
 
         public virtual byte[] Sign(byte[] data)

@@ -1,10 +1,4 @@
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static OF_DL.Entities.Messages.Messages;
 
 namespace OF_DL.Entities.Purchased
 {
@@ -71,7 +65,7 @@ namespace OF_DL.Entities.Purchased
             public object giphyId { get; set; }
             public bool? lockedText { get; set; }
             public bool? isFree { get; set; }
-            public string? price { get; set; }
+            public string price { get; set; }
             public bool? isMediaReady { get; set; }
             public int? mediaCount { get; set; }
             public List<Medium> media { get; set; }

@@ -1,11 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace WidevineClient
 {
@@ -70,7 +66,7 @@ namespace WidevineClient
 
         public static string[] GetElementsInnerTextByAttribute(string html, string element, string attribute)
         {
-            List<string> content = new List<string>();
+            List<string> content = [];
 
             foreach (string line in html.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None))
             {
@@ -88,7 +84,7 @@ namespace WidevineClient
                     content.Add(contentPart);
                 }
             }
-            return content.ToArray();
+            return [.. content];
         }
 
         public static string BytesToHex(byte[] data)
@@ -153,14 +149,14 @@ namespace WidevineClient
             return System.Reflection.Assembly.GetCallingAssembly().GetName().Version.ToString();
         }
 
-        public static string? RemoveInvalidFileNameChars(string? fileName)
+        public static string RemoveInvalidFileNameChars(string fileName)
         {
             return string.IsNullOrEmpty(fileName) ? fileName : string.Concat(fileName.Split(Path.GetInvalidFileNameChars()));
         }
 
         public static List<string> CalculateFolderMD5(string folder)
         {
-            List<string> md5Hashes = new List<string>();
+            List<string> md5Hashes = [];
             if (Directory.Exists(folder))
             {
                 string[] files = Directory.GetFiles(folder);

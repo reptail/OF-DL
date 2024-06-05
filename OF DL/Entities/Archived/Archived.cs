@@ -1,9 +1,4 @@
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace OF_DL.Entities.Archived
 {
@@ -97,7 +92,7 @@ namespace OF_DL.Entities.Archived
             public bool? isOpened { get; set; }
             public bool? canToggleFavorite { get; set; }
             public object streamId { get; set; }
-            public string? price { get; set; }
+            public string price { get; set; }
             public bool? hasVoting { get; set; }
             public bool? isAddedToBookmarks { get; set; }
             public bool? isArchived { get; set; }

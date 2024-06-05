@@ -1,10 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using OF_DL.Enumurations;
-using System.IO;
 using Microsoft.Data.Sqlite;
 using Serilog;
 
@@ -295,7 +288,7 @@ namespace OF_DL.Helpers
         }
 
 
-        public async Task AddMedia(string folder, long media_id, long post_id, string link, string? directory, string? filename, long? size, string api_type, string media_type, bool preview, bool downloaded, DateTime? created_at)
+        public async Task AddMedia(string folder, long media_id, long post_id, string link, string directory, string filename, long? size, string api_type, string media_type, bool preview, bool downloaded, DateTime? created_at)
         {
             try
             {
