@@ -347,18 +347,25 @@ public class Program
         {
             DateTime startTime = DateTime.Now;
             Dictionary<string, int> users = new();
-            Dictionary<string, int> activeSubs = await m_ApiHelper.GetActiveSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config);
-            foreach (KeyValuePair<string, int> activeSub in activeSubs)
+
+            Task<Dictionary<string, int>?> taskActive = m_ApiHelper.GetActiveSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config);
+            Task<Dictionary<string, int>?> taskExpired = Config!.IncludeExpiredSubscriptions
+                ? m_ApiHelper.GetExpiredSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config)
+                : Task.FromResult<Dictionary<string, int>?>([]);
+
+            await Task.WhenAll(taskActive, taskExpired);
+
+            foreach (KeyValuePair<string, int> activeSub in await taskActive)
             {
                 if (!users.ContainsKey(activeSub.Key))
                 {
                     users.Add(activeSub.Key, activeSub.Value);
                 }
             }
+
             if (Config!.IncludeExpiredSubscriptions)
             {
-                Dictionary<string, int> expiredSubs = await m_ApiHelper.GetExpiredSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config);
-                foreach (KeyValuePair<string, int> expiredSub in expiredSubs)
+                foreach (KeyValuePair<string, int> expiredSub in await taskExpired)
                 {
                     if (!users.ContainsKey(expiredSub.Key))
                     {
