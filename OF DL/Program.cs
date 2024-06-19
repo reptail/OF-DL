@@ -3,6 +3,7 @@ using Newtonsoft.Json.Linq;
 using OF_DL.Entities;
 using OF_DL.Entities.Archived;
 using OF_DL.Entities.Chats;
+using OF_DL.Entities.Logs;
 using OF_DL.Entities.Messages;
 using OF_DL.Entities.Post;
 using OF_DL.Entities.Purchased;
@@ -20,6 +21,10 @@ namespace OF_DL;
 
 public class Program
 {
+    private static readonly DateTime _downloadStartTime = DateTime.Now;
+    private static Dictionary<string, UserLog> _userLogs = [];
+    private static List<ScrapeLog> _scrapeLogs = [];
+
     public int MAX_AGE = 0;
     public static List<long> paid_post_ids = new();
 
@@ -28,7 +33,7 @@ public class Program
     private static Config? config = null;
     private static Auth? auth = null;
 
-    public async static Task Main(string[] args)
+    public static async Task Main(string[] args)
     {
         bool cliNonInteractive = false;
 
@@ -151,13 +156,13 @@ public class Program
                 Environment.Exit(3);
             }
 
-            if(cliNonInteractive)
+            if (cliNonInteractive)
             {
                 // CLI argument overrides configuration
                 config!.NonInteractiveMode = true;
             }
 
-            if(config!.NonInteractiveMode)
+            if (config!.NonInteractiveMode)
             {
                 cliNonInteractive = true; // If it was set in the config, reset the cli value so exception handling works
             }
@@ -333,6 +338,7 @@ public class Program
     private static async Task DownloadAllData(APIHelper m_ApiHelper, Auth Auth, Config Config)
     {
         DBHelper dBHelper = new DBHelper(Config);
+        LoadLogFile(Config);
 
         if (Config.EnableDebugLogs)
             Log.Debug("Calling DownloadAllData");
@@ -502,7 +508,7 @@ public class Program
                     p = $"__user_data__/sites/OnlyFans/";
                 }
                 List<PurchasedTabCollection> purchasedTabCollections = await m_ApiHelper.GetPurchasedTab("/posts/paid", p, Config, users);
-                foreach(PurchasedTabCollection purchasedTabCollection in purchasedTabCollections)
+                foreach (PurchasedTabCollection purchasedTabCollection in purchasedTabCollections)
                 {
                     AnsiConsole.Markup($"[red]\nScraping Data for {purchasedTabCollection.Username}\n[/]");
                     string path = "";
@@ -519,8 +525,8 @@ public class Program
 
                     int paidPostCount = 0;
                     int paidMessagesCount = 0;
-                    paidPostCount = await DownloadPaidPostsPurchasedTab(downloadContext, purchasedTabCollection.PaidPosts, users.FirstOrDefault(u => u.Value == purchasedTabCollection.UserId), paidPostCount, path, users);
-                    paidMessagesCount = await DownloadPaidMessagesPurchasedTab(downloadContext, purchasedTabCollection.PaidMessages, users.FirstOrDefault(u => u.Value == purchasedTabCollection.UserId), paidMessagesCount, path, users);
+                    (paidPostCount, int newPaidPostCount) = await DownloadPaidPostsPurchasedTab(downloadContext, purchasedTabCollection.PaidPosts, users.FirstOrDefault(u => u.Value == purchasedTabCollection.UserId), paidPostCount, path, users);
+                    (paidMessagesCount, int newPaidMessagesCount) = await DownloadPaidMessagesPurchasedTab(downloadContext, purchasedTabCollection.PaidMessages, users.FirstOrDefault(u => u.Value == purchasedTabCollection.UserId), paidMessagesCount, path, users);
 
                     AnsiConsole.Markup("\n");
                     AnsiConsole.Write(new BreakdownChart()
@@ -528,10 +534,14 @@ public class Program
                     .AddItem("Paid Posts", paidPostCount, Color.Red)
                     .AddItem("Paid Messages", paidMessagesCount, Color.Aqua));
                     AnsiConsole.Markup("\n");
+
+                    AppendLog(purchasedTabCollection.Username, newPaidPostCount, newPaidMessagesCount);
                 }
                 DateTime endTime = DateTime.Now;
                 TimeSpan totalTime = endTime - startTime;
                 AnsiConsole.Markup($"[green]Scrape Completed in {totalTime.TotalMinutes:0.00} minutes\n[/]");
+
+                AppendScrape("PurchasedTab", startTime, totalTime.TotalMinutes, Config);
             }
             else if (hasSelectedUsersKVP.Key && hasSelectedUsersKVP.Value != null && hasSelectedUsersKVP.Value.ContainsKey("SingleMessage"))
             {
@@ -606,6 +616,14 @@ public class Program
                     int highlightsCount = 0;
                     int messagesCount = 0;
                     int paidMessagesCount = 0;
+                    int newPaidPostCount = 0;
+                    int newPostCount = 0;
+                    int newArchivedCount = 0;
+                    int newStreamsCount = 0;
+                    int newStoriesCount = 0;
+                    int newHighlightsCount = 0;
+                    int newMessagesCount = 0;
+                    int newPaidMessagesCount = 0;
                     AnsiConsole.Markup($"[red]\nScraping Data for {user.Key}\n[/]");
 
                     string path = "";
@@ -645,42 +663,42 @@ public class Program
 
                     if (Config.DownloadPaidPosts)
                     {
-                        paidPostCount = await DownloadPaidPosts(downloadContext, hasSelectedUsersKVP, user, paidPostCount, path);
+                        (paidPostCount, newPaidPostCount) = await DownloadPaidPosts(downloadContext, hasSelectedUsersKVP, user, paidPostCount, path);
                     }
 
                     if (Config.DownloadPosts)
                     {
-                        postCount = await DownloadFreePosts(downloadContext, hasSelectedUsersKVP, user, postCount, path);
+                        (postCount, newPostCount) = await DownloadFreePosts(downloadContext, hasSelectedUsersKVP, user, postCount, path);
                     }
 
                     if (Config.DownloadArchived)
                     {
-                        archivedCount = await DownloadArchived(downloadContext, hasSelectedUsersKVP, user, archivedCount, path);
+                        (archivedCount, newArchivedCount) = await DownloadArchived(downloadContext, hasSelectedUsersKVP, user, archivedCount, path);
                     }
 
                     if (Config.DownloadStreams)
                     {
-                        streamsCount = await DownloadStreams(downloadContext, hasSelectedUsersKVP, user, streamsCount, path);
+                        (streamsCount, newStreamsCount) = await DownloadStreams(downloadContext, hasSelectedUsersKVP, user, streamsCount, path);
                     }
 
                     if (Config.DownloadStories)
                     {
-                        storiesCount = await DownloadStories(downloadContext, user, storiesCount, path);
+                        (storiesCount, newStoriesCount) = await DownloadStories(downloadContext, user, storiesCount, path);
                     }
 
                     if (Config.DownloadHighlights)
                     {
-                        highlightsCount = await DownloadHighlights(downloadContext, user, highlightsCount, path);
+                        (highlightsCount, newHighlightsCount) = await DownloadHighlights(downloadContext, user, highlightsCount, path);
                     }
 
                     if (Config.DownloadMessages)
                     {
-                        (messagesCount) = await DownloadMessages(downloadContext, hasSelectedUsersKVP, user, messagesCount, path);
+                        (messagesCount, newMessagesCount) = await DownloadMessages(downloadContext, hasSelectedUsersKVP, user, messagesCount, path);
                     }
 
                     if (Config.DownloadPaidMessages)
                     {
-                        paidMessagesCount = await DownloadPaidMessages(downloadContext, hasSelectedUsersKVP, user, paidMessagesCount, path);
+                        (paidMessagesCount, newPaidMessagesCount) = await DownloadPaidMessages(downloadContext, hasSelectedUsersKVP, user, paidMessagesCount, path);
                     }
 
                     AnsiConsole.Markup("\n");
@@ -695,10 +713,14 @@ public class Program
                     .AddItem("Messages", messagesCount, Color.LightGreen)
                     .AddItem("Paid Messages", paidMessagesCount, Color.Aqua));
                     AnsiConsole.Markup("\n");
+
+                    AppendLog(user.Key, newPostCount, newArchivedCount, newStreamsCount, newStoriesCount, newHighlightsCount, newMessagesCount, newPaidPostCount, newPaidMessagesCount);
                 }
                 DateTime endTime = DateTime.Now;
                 TimeSpan totalTime = endTime - startTime;
                 AnsiConsole.Markup($"[green]Scrape Completed in {totalTime.TotalMinutes:0.00} minutes\n[/]");
+
+                AppendScrape("Scrape", startTime, totalTime.TotalMinutes, Config!);
             }
             else if (hasSelectedUsersKVP.Key && hasSelectedUsersKVP.Value != null && hasSelectedUsersKVP.Value.ContainsKey("ConfigChanged"))
             {
@@ -709,6 +731,8 @@ public class Program
                 break;
             }
         } while (!Config.NonInteractiveMode);
+
+        WriteLogFile(Config);
     }
 
     private static IFileNameFormatConfig GetCreatorFileNameFormatConfig(Config config, string userName)
@@ -723,9 +747,9 @@ public class Program
                 return val1;
         };
 
-        if(config.CreatorConfigs.TryGetValue(userName, out var creatorConfig))
+        if (config.CreatorConfigs.TryGetValue(userName, out var creatorConfig))
         {
-            if(creatorConfig != null)
+            if (creatorConfig != null)
             {
                 combinedConfig.PaidMessageFileNameFormat = creatorConfig.PaidMessageFileNameFormat;
                 combinedConfig.PostFileNameFormat = creatorConfig.PostFileNameFormat;
@@ -742,7 +766,7 @@ public class Program
         return combinedConfig;
     }
 
-    private static async Task<int> DownloadPaidMessages(IDownloadContext downloadContext, KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP, KeyValuePair<string, int> user, int paidMessagesCount, string path)
+    private static async Task<(int count, int newCount)> DownloadPaidMessages(IDownloadContext downloadContext, KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP, KeyValuePair<string, int> user, int paidMessagesCount, string path)
     {
         if (config.EnableDebugLogs)
             Log.Debug("Calling DownloadPaidMessages - " + user.Key);
@@ -867,10 +891,10 @@ public class Program
             AnsiConsole.Markup($"[red]Found 0 Paid Messages\n[/]");
         }
 
-        return paidMessagesCount;
+        return (paidMessagesCount, newPaidMessagesCount);
     }
 
-    private static async Task<int> DownloadMessages(IDownloadContext downloadContext, KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP, KeyValuePair<string, int> user, int messagesCount, string path)
+    private static async Task<(int count, int newCount)> DownloadMessages(IDownloadContext downloadContext, KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP, KeyValuePair<string, int> user, int messagesCount, string path)
     {
         if (config.EnableDebugLogs)
             Log.Debug("Calling DownloadMessages - " + user.Key);
@@ -1004,10 +1028,10 @@ public class Program
             AnsiConsole.Markup($"[red]Found 0 Messages\n[/]");
         }
 
-        return messagesCount;
+        return (messagesCount, newMessagesCount);
     }
 
-    private static async Task<int> DownloadHighlights(IDownloadContext downloadContext, KeyValuePair<string, int> user, int highlightsCount, string path)
+    private static async Task<(int count, int newCount)> DownloadHighlights(IDownloadContext downloadContext, KeyValuePair<string, int> user, int highlightsCount, string path)
     {
         if (config.EnableDebugLogs)
             Log.Debug("Calling DownloadHighlights - " + user.Key);
@@ -1058,10 +1082,10 @@ public class Program
             AnsiConsole.Markup($"[red]Found 0 Highlights\n[/]");
         }
 
-        return highlightsCount;
+        return (highlightsCount, newHighlightsCount);
     }
 
-    private static async Task<int> DownloadStories(IDownloadContext downloadContext, KeyValuePair<string, int> user, int storiesCount, string path)
+    private static async Task<(int count, int newCount)> DownloadStories(IDownloadContext downloadContext, KeyValuePair<string, int> user, int storiesCount, string path)
     {
         if (config.EnableDebugLogs)
             Log.Debug("Calling DownloadStories - " + user.Key);
@@ -1112,10 +1136,10 @@ public class Program
             AnsiConsole.Markup($"[red]Found 0 Stories\n[/]");
         }
 
-        return storiesCount;
+        return (storiesCount, newStoriesCount);
     }
 
-    private static async Task<int> DownloadArchived(IDownloadContext downloadContext, KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP, KeyValuePair<string, int> user, int archivedCount, string path)
+    private static async Task<(int count, int newCount)> DownloadArchived(IDownloadContext downloadContext, KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP, KeyValuePair<string, int> user, int archivedCount, string path)
     {
         if (config.EnableDebugLogs)
             Log.Debug("Calling DownloadArchived - " + user.Key);
@@ -1239,10 +1263,10 @@ public class Program
             AnsiConsole.Markup($"[red]Found 0 Archived Posts\n[/]");
         }
 
-        return archivedCount;
+        return (archivedCount, newArchivedCount);
     }
 
-    private static async Task<int> DownloadFreePosts(IDownloadContext downloadContext, KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP, KeyValuePair<string, int> user, int postCount, string path)
+    private static async Task<(int count, int newCount)> DownloadFreePosts(IDownloadContext downloadContext, KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP, KeyValuePair<string, int> user, int postCount, string path)
     {
         if (config.EnableDebugLogs)
             Log.Debug("Calling DownloadFreePosts - " + user.Key);
@@ -1255,7 +1279,7 @@ public class Program
         if (posts == null || posts.Posts.Count <= 0)
         {
             AnsiConsole.Markup($"[red]Found 0 Posts\n[/]");
-            return 0;
+            return (0, 0);
         }
 
         AnsiConsole.Markup($"[red]Found {posts.Posts.Count} Posts\n[/]");
@@ -1371,10 +1395,10 @@ public class Program
         });
         AnsiConsole.Markup($"[red]Posts Already Downloaded: {oldPostCount} New Posts Downloaded: {newPostCount}[/]\n");
 
-        return postCount;
+        return (postCount, newPostCount);
     }
 
-    private static async Task<int> DownloadPaidPosts(IDownloadContext downloadContext, KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP, KeyValuePair<string, int> user, int paidPostCount, string path)
+    private static async Task<(int count, int newCount)> DownloadPaidPosts(IDownloadContext downloadContext, KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP, KeyValuePair<string, int> user, int paidPostCount, string path)
     {
         AnsiConsole.Markup($"[red]Getting Paid Posts\n[/]");
 
@@ -1388,7 +1412,7 @@ public class Program
         if (purchasedPosts == null || purchasedPosts.PaidPosts.Count <= 0)
         {
             AnsiConsole.Markup($"[red]Found 0 Paid Posts\n[/]");
-            return 0;
+            return (0, 0);
         }
 
         AnsiConsole.Markup($"[red]Found {purchasedPosts.PaidPosts.Count} Paid Posts\n[/]");
@@ -1498,17 +1522,17 @@ public class Program
         });
         AnsiConsole.Markup($"[red]Paid Posts Already Downloaded: {oldPaidPostCount} New Paid Posts Downloaded: {newPaidPostCount}[/]\n");
 
-        return paidPostCount;
+        return (paidPostCount, newPaidPostCount);
     }
 
-    private static async Task<int> DownloadPaidPostsPurchasedTab(IDownloadContext downloadContext, PaidPostCollection purchasedPosts, KeyValuePair<string, int> user, int paidPostCount, string path, Dictionary<string, int> users)
+    private static async Task<(int count, int newCount)> DownloadPaidPostsPurchasedTab(IDownloadContext downloadContext, PaidPostCollection purchasedPosts, KeyValuePair<string, int> user, int paidPostCount, string path, Dictionary<string, int> users)
     {
         int oldPaidPostCount = 0;
         int newPaidPostCount = 0;
         if (purchasedPosts == null || purchasedPosts.PaidPosts.Count <= 0)
         {
             AnsiConsole.Markup($"[red]Found 0 Paid Posts\n[/]");
-            return 0;
+            return (0, 0);
         }
 
         AnsiConsole.Markup($"[red]Found {purchasedPosts.PaidPosts.Count} Paid Posts\n[/]");
@@ -1618,10 +1642,10 @@ public class Program
         });
         AnsiConsole.Markup($"[red]Paid Posts Already Downloaded: {oldPaidPostCount} New Paid Posts Downloaded: {newPaidPostCount}[/]\n");
 
-        return paidPostCount;
+        return (paidPostCount, newPaidPostCount);
     }
 
-    private static async Task<int> DownloadPaidMessagesPurchasedTab(IDownloadContext downloadContext, PaidMessageCollection paidMessageCollection, KeyValuePair<string, int> user, int paidMessagesCount, string path, Dictionary<string, int> users)
+    private static async Task<(int count, int newCount)> DownloadPaidMessagesPurchasedTab(IDownloadContext downloadContext, PaidMessageCollection paidMessageCollection, KeyValuePair<string, int> user, int paidMessagesCount, string path, Dictionary<string, int> users)
     {
         int oldPaidMessagesCount = 0;
         int newPaidMessagesCount = 0;
@@ -1739,10 +1763,10 @@ public class Program
             AnsiConsole.Markup($"[red]Found 0 Paid Messages\n[/]");
         }
 
-        return paidMessagesCount;
+        return (paidMessagesCount, newPaidMessagesCount);
     }
 
-    private static async Task<int> DownloadStreams(IDownloadContext downloadContext, KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP, KeyValuePair<string, int> user, int streamsCount, string path)
+    private static async Task<(int count, int newCount)> DownloadStreams(IDownloadContext downloadContext, KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP, KeyValuePair<string, int> user, int streamsCount, string path)
     {
         if (config.EnableDebugLogs)
             Log.Debug("Calling DownloadStreams - " + user.Key);
@@ -1754,7 +1778,7 @@ public class Program
         if (streams == null || streams.Streams.Count <= 0)
         {
             AnsiConsole.Markup($"[red]Found 0 Streams\n[/]");
-            return 0;
+            return (0, 0);
         }
 
         AnsiConsole.Markup($"[red]Found {streams.Streams.Count} Streams\n[/]");
@@ -1870,7 +1894,7 @@ public class Program
         });
         AnsiConsole.Markup($"[red]Streams Already Downloaded: {oldStreamsCount} New Streams Downloaded: {newStreamsCount}[/]\n");
 
-        return streamsCount;
+        return (streamsCount, newStreamsCount);
     }
 
     private static async Task<int> DownloadPaidMessage(IDownloadContext downloadContext, KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP, string username, int paidMessagesCount, string path, long message_id)
@@ -2216,10 +2240,10 @@ public class Program
                             ("[red]Go Back[/]", false)
                         };
 
-                        foreach(var propInfo in typeof(Config).GetProperties().OrderBy(p => p.Name))
+                        foreach (var propInfo in typeof(Config).GetProperties().OrderBy(p => p.Name))
                         {
                             var attr = propInfo.GetCustomAttribute<ToggleableConfigAttribute>();
-                            if(attr != null)
+                            if (attr != null)
                             {
                                 string itemLabel = $"[red]{propInfo.Name}[/]";
                                 choices.Add(new(itemLabel, (bool)propInfo.GetValue(currentConfig)!));
@@ -2328,7 +2352,7 @@ public class Program
             .Where(c => c.Value.unreadMessagesCount > 0)
             .ToList();
 
-        return [..unreadChats.Select(c => c.Key)];
+        return [.. unreadChats.Select(c => c.Key)];
     }
 
     static bool ValidateFilePath(string path)
@@ -2394,5 +2418,108 @@ public class Program
             }
         }
         return null;
+    }
+
+    static void AppendLog(string username, int newPaidPostCount, int newPaidMessagesCount)
+        => AppendLog(username, 0, 0, 0, 0, 0, 0, newPaidPostCount, newPaidMessagesCount);
+
+    static void AppendLog(string username, int newPostCount, int newArchivedCount, int newStreamsCount, int newStoriesCount, int newHighlightsCount, int newMessagesCount, int newPaidPostCount, int newPaidMessagesCount)
+    {
+        int totalNewCount = newPostCount + newArchivedCount + newStreamsCount + newStoriesCount + newHighlightsCount + newMessagesCount + newPaidPostCount + newPaidMessagesCount;
+
+        if (totalNewCount <= 0)
+            return;
+
+        if (!_userLogs.TryGetValue(username, out UserLog log))
+            _userLogs[username] = log = new(username);
+
+        log.PostCount += newPostCount;
+        log.ArchivedCount += newArchivedCount;
+        log.StreamsCount += newStreamsCount;
+        log.StoriesCount += newStoriesCount;
+        log.HighlightsCount += newHighlightsCount;
+        log.MessagesCount += newMessagesCount;
+        log.PaidPostCount += newPaidPostCount;
+        log.PaidMessagesCount += newPaidMessagesCount;
+    }
+
+    static void AppendScrape(string name, DateTime startTime, double totalMinutes, Config config)
+    {
+        string scrapeName = name;
+
+        if (config.NonInteractiveMode)
+        {
+            if (config.NonInteractiveSpecificLists is not null && config.NonInteractiveSpecificLists.Length > 0)
+                scrapeName = $"{scrapeName} Lists ({string.Join(", ", config.NonInteractiveSpecificLists)})";
+
+            if (config.NonInteractiveSpecificUsers is not null && config.NonInteractiveSpecificUsers.Length > 0)
+                scrapeName = $"{scrapeName} Users ({string.Join(", ", config.NonInteractiveSpecificUsers)})";
+        }
+
+        _scrapeLogs.Add(new(scrapeName, startTime, totalMinutes));
+
+        WriteLogFile(config);
+    }
+
+    static void LoadLogFile(Config config)
+    {
+        (string folderPath, string filePath) = GetLogFilePath(config);
+
+        try
+        {
+            if (!File.Exists(filePath))
+                return;
+
+            string json = File.ReadAllText(filePath);
+            LogFile logFile = JsonConvert.DeserializeObject<LogFile>(json);
+
+            _userLogs.Clear();
+            _scrapeLogs.Clear();
+
+            foreach (UserLog ul in logFile.UserLogs)
+                _userLogs.Add(ul.Username, ul);
+
+            _scrapeLogs.AddRange(logFile.ScrapeLogs);
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.Markup($"[red]Failed to read JSON log file! {ex.Message}[/]\n");
+
+            string pathWithoutExtension = Path.GetFileNameWithoutExtension(filePath);
+            string extension = Path.GetExtension(filePath);
+            string newFilePath = $"{folderPath}/{pathWithoutExtension}_failed{extension}";
+            File.Move(filePath, newFilePath);
+        }
+    }
+
+    static void WriteLogFile(Config config)
+    {
+        try
+        {
+            (_, string filePath) = GetLogFilePath(config);
+
+            LogFile newLogFile = new(
+                [.. _userLogs.Values],
+                [.. _scrapeLogs]
+            );
+
+            string json = JsonConvert.SerializeObject(newLogFile, Formatting.Indented);
+            File.WriteAllText(filePath, json);
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.Markup($"[red]Failed to write JSON log file! {ex.Message}[/]\n");
+        }
+    }
+
+    static (string folderPath, string filePath) GetLogFilePath(Config config)
+    {
+        DateTime dt = _downloadStartTime;
+
+        string folderPath = $"{config.DownloadPath.Trim('/')}/.logs/{dt:yyyy}/{dt:MM MMMM}";
+        Directory.CreateDirectory(folderPath);
+
+        string filePath = $"{folderPath}/{dt:yyyy-MM-dd}.json";
+        return (folderPath, filePath);
     }
 }
