@@ -451,11 +451,16 @@ public class Program
         {
             DateTime startTime = DateTime.Now;
             Dictionary<string, int> users = new();
-            Dictionary<string, int> activeSubs = await m_ApiHelper.GetActiveSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config);
 
+            Task<Dictionary<string, int>?> taskActive = m_ApiHelper.GetActiveSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config);
+            Task<Dictionary<string, int>?> taskExpired = Config!.IncludeExpiredSubscriptions
+                ? m_ApiHelper.GetExpiredSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config)
+                : Task.FromResult<Dictionary<string, int>?>([]);
+
+            await Task.WhenAll(taskActive, taskExpired);
             Log.Debug("Subscriptions: ");
 
-            foreach (KeyValuePair<string, int> activeSub in activeSubs)
+            foreach (KeyValuePair<string, int> activeSub in await taskActive)
             {
                 if (!users.ContainsKey(activeSub.Key))
                 {
@@ -463,12 +468,11 @@ public class Program
                     Log.Debug($"Name: {activeSub.Key} ID: {activeSub.Value}");
                 }
             }
+
             if (Config!.IncludeExpiredSubscriptions)
             {
                 Log.Debug("Inactive Subscriptions: ");
-
-                Dictionary<string, int> expiredSubs = await m_ApiHelper.GetExpiredSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config);
-                foreach (KeyValuePair<string, int> expiredSub in expiredSubs)
+                foreach (KeyValuePair<string, int> expiredSub in await taskExpired)
                 {
                     if (!users.ContainsKey(expiredSub.Key))
                     {
