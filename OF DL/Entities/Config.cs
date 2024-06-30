@@ -80,6 +80,9 @@ namespace OF_DL.Entities
         public string NonInteractiveModeListName { get; set; } = string.Empty;
         [ToggleableConfig]
         public bool NonInteractiveModePurchasedTab { get; set; } = false;
+        public string[] NonInteractiveSpecificUsers { get; set; } = [];
+        public string[] NonInteractiveSpecificLists { get; set; } = [];
+        
         public string? FFmpegPath { get; set; } = string.Empty;
 
         [ToggleableConfig]
