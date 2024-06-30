@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OF_DL.Entities;
 using OF_DL.Entities.Archived;
+using OF_DL.Entities.Chats;
 using OF_DL.Entities.Messages;
 using OF_DL.Entities.Post;
 using OF_DL.Entities.Purchased;
@@ -613,7 +614,7 @@ public class Program
 
                     if (Config.DownloadMessages)
                     {
-                        messagesCount = await DownloadMessages(downloadContext, hasSelectedUsersKVP, user, messagesCount, path);
+                        (messagesCount) = await DownloadMessages(downloadContext, hasSelectedUsersKVP, user, messagesCount, path);
                     }
 
                     if (Config.DownloadPaidMessages)
@@ -813,9 +814,18 @@ public class Program
         if (config.EnableDebugLogs)
             Log.Debug("Calling DownloadMessages - " + user.Key);
 
+        AnsiConsole.Markup($"[grey]Getting Unread Chats\n[/]");
+        HashSet<int> unreadChats = await GetUsersWithUnreadChats(downloadContext.ApiHelper, downloadContext.DownloadConfig);
+
         AnsiConsole.Markup($"[red]Getting Messages\n[/]");
-        //Dictionary<long, string> messages = await apiHelper.GetMedia(MediaType.Messages, $"/chats/{user.Value}/messages", null, path, auth, paid_post_ids);
         MessageCollection messages = await downloadContext.ApiHelper.GetMessages($"/chats/{user.Value}/messages", path, downloadContext.DownloadConfig!);
+
+        if (unreadChats.Contains(user.Value))
+        {
+            AnsiConsole.Markup($"[grey]Restoring unread state\n[/]");
+            await downloadContext.ApiHelper.MarkAsUnread($"/chats/{user.Value}/mark-as-read", downloadContext.DownloadConfig);
+        }
+
         int oldMessagesCount = 0;
         int newMessagesCount = 0;
         if (messages != null && messages.Messages.Count > 0)
@@ -2247,6 +2257,17 @@ public class Program
                 "[red]Exit[/]"
             };
         }
+    }
+
+    private static async Task<HashSet<int>> GetUsersWithUnreadChats(APIHelper apiHelper, IDownloadConfig currentConfig)
+    {
+        ChatCollection chats = await apiHelper.GetChats($"/chats", currentConfig);
+
+        var unreadChats = chats.Chats
+            .Where(c => c.Value.unreadMessagesCount > 0)
+            .ToList();
+
+        return [..unreadChats.Select(c => c.Key)];
     }
 
     static bool ValidateFilePath(string path)
