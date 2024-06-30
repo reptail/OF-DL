@@ -372,6 +372,46 @@ public class Program
                 return;
             }
 
+            if (args is not null && args.Length > 0)
+            {
+                const string NON_INTERACTIVE_ARG = "--non-interactive";
+                const string SPECIFIC_LISTS_ARG = "--specific-lists";
+                const string SPECIFIC_USERS_ARG = "--specific-users";
+
+                if (args.Any(a => NON_INTERACTIVE_ARG.Equals(NON_INTERACTIVE_ARG, StringComparison.OrdinalIgnoreCase)))
+                {
+                    AnsiConsole.Markup($"[grey]Non-Interactive Mode enabled through command-line argument![/]\n");
+
+                    config.NonInteractiveMode = true;
+
+                    int indexOfSpecificListsArg = Array.FindIndex(args, a => a.Contains(SPECIFIC_LISTS_ARG, StringComparison.OrdinalIgnoreCase));
+                    int indexOfSpecificUsersArg = Array.FindIndex(args, a => a.Contains(SPECIFIC_USERS_ARG, StringComparison.OrdinalIgnoreCase));
+                    char[] separator = [','];
+
+                    if (indexOfSpecificListsArg >= 0)
+                    {
+                        int indexOfListValues = indexOfSpecificListsArg + 1;
+
+                        string[] strListValues = args.ElementAtOrDefault(indexOfListValues)?.Split(separator, StringSplitOptions.RemoveEmptyEntries) ?? [];
+                        if (strListValues.Length > 0)
+                        {
+                            config.NonInteractiveSpecificLists = strListValues;
+                            config.NonInteractiveModeListName = string.Empty;
+                        }
+                    }
+
+                    if (indexOfSpecificUsersArg >= 0)
+                    {
+                        int indexOfUserValues = indexOfSpecificUsersArg + 1;
+                        string[] strUserValues = args.ElementAtOrDefault(indexOfUserValues)?.Split(separator, StringSplitOptions.RemoveEmptyEntries) ?? [];
+                        if (strUserValues.Length > 0)
+                        {
+                            config.NonInteractiveSpecificUsers = strUserValues;
+                        }
+                    }
+                }
+            }
+
             AnsiConsole.Markup($"[green]Logged In successfully as {validate.name} {validate.username}\n[/]");
             await DownloadAllData(apiHelper, auth, config);
         }
@@ -451,9 +491,30 @@ public class Program
 
             await dBHelper.CreateUsersDB(users);
             KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP;
-            if(Config.NonInteractiveMode && Config.NonInteractiveModePurchasedTab)
+            if (Config.NonInteractiveMode && Config.NonInteractiveModePurchasedTab)
             {
                 hasSelectedUsersKVP = new KeyValuePair<bool, Dictionary<string, int>>(true, new Dictionary<string, int> { { "PurchasedTab", 0 } });
+            }
+            else if (Config.NonInteractiveMode && Config.NonInteractiveSpecificLists is not null && Config.NonInteractiveSpecificLists.Length > 0)
+            {
+                HashSet<string> listUsernames = [];
+                foreach (string listName in Config.NonInteractiveSpecificLists)
+                {
+                    if (!lists.TryGetValue(listName, out int listId))
+                        continue;
+
+                    List<string> usernames = await m_ApiHelper.GetListUsers($"/lists/{listId}/users", Config);
+                    foreach (string user in usernames)
+                        listUsernames.Add(user);
+                }
+                users = users.Where(x => listUsernames.Contains(x.Key)).Distinct().ToDictionary(x => x.Key, x => x.Value);
+                hasSelectedUsersKVP = new KeyValuePair<bool, Dictionary<string, int>>(true, users);
+            }
+            else if (Config.NonInteractiveMode && Config.NonInteractiveSpecificUsers is not null && Config.NonInteractiveSpecificUsers.Length > 0)
+            {
+                HashSet<string> usernames = [.. Config.NonInteractiveSpecificUsers];
+                users = users.Where(u => usernames.Contains(u.Key)).ToDictionary(u => u.Key, u => u.Value);
+                hasSelectedUsersKVP = new KeyValuePair<bool, Dictionary<string, int>>(true, users);
             }
             else if (Config.NonInteractiveMode && string.IsNullOrEmpty(Config.NonInteractiveModeListName))
             {
