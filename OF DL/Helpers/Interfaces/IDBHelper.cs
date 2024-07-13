@@ -13,5 +13,6 @@ namespace OF_DL.Helpers
         Task<long> GetStoredFileSize(string folder, long media_id, string api_type);
         Task<bool> CheckDownloaded(string folder, long media_id, string api_type);
         Task<DateTime?> GetMostRecentPostDate(string folder);
+        void CloseAllConnections();
     }
 }

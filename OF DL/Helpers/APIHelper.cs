@@ -1622,90 +1622,90 @@ public class APIHelper : IAPIHelper
             }
 
             if (message.media != null && message.media.Count > 0)
+            {
+                foreach (Messages.Medium medium in message.media)
                 {
-                    foreach (Messages.Medium medium in message.media)
+                    if (medium.canView && medium.source.source != null && !medium.source.source.Contains("upload"))
                     {
-                        if (medium.canView && medium.source.source != null && !medium.source.source.Contains("upload"))
+                        if (medium.type == "photo" && !config.DownloadImages)
                         {
-                            if (medium.type == "photo" && !config.DownloadImages)
-                            {
-                                continue;
-                            }
-                            if (medium.type == "video" && !config.DownloadVideos)
-                            {
-                                continue;
-                            }
-                            if (medium.type == "gif" && !config.DownloadVideos)
-                            {
-                                continue;
-                            }
-                            if (medium.type == "audio" && !config.DownloadAudios)
-                            {
-                                continue;
-                            }
-                            
-                            if (!paidMessageCollection.PaidMessages.ContainsKey(medium.id))
-                            {
-                                await m_DBHelper.AddMedia(folder, medium.id, message.id, medium.source.source, null, null, null, "Messages", medium.type == "photo" ? "Images" : (medium.type == "video" || medium.type == "gif" ? "Videos" : (medium.type == "audio" ? "Audios" : null)), messagePreviewIds.Contains(medium.id) ? true : false, false, null);
-                                paidMessageCollection.PaidMessages.Add(medium.id, medium.source.source.ToString());
-                                paidMessageCollection.PaidMessageMedia.Add(medium);
-                            }
+                            continue;
                         }
-                        else if (medium.canView && medium.files != null && medium.files.drm != null)
+                        if (medium.type == "video" && !config.DownloadVideos)
                         {
-                            if (medium.type == "photo" && !config.DownloadImages)
-                            {
-                                continue;
-                            }
-                            if (medium.type == "video" && !config.DownloadVideos)
-                            {
-                                continue;
-                            }
-                            if (medium.type == "gif" && !config.DownloadVideos)
-                            {
-                                continue;
-                            }
-                            if (medium.type == "audio" && !config.DownloadAudios)
-                            {
-                                continue;
-                            }
-                            
-                            if (!paidMessageCollection.PaidMessages.ContainsKey(medium.id))
-                            {
-                               await m_DBHelper.AddMedia(folder, medium.id, message.id, medium.videoSources._720, null, null, null, "Messages", medium.type == "photo" ? "Images" : (medium.type == "video" || medium.type == "gif" ? "Videos" : (medium.type == "audio" ? "Audios" : null)), messagePreviewIds.Contains(medium.id) ? true : false, false, null);
-                               paidMessageCollection.PaidMessages.Add(medium.id, $"{medium.files.drm.manifest.dash},{medium.files.drm.signature.dash.CloudFrontPolicy},{medium.files.drm.signature.dash.CloudFrontSignature},{medium.files.drm.signature.dash.CloudFrontKeyPairId},{medium.id},{message.id}");
-                               paidMessageCollection.PaidMessageMedia.Add(medium);
-                            }
+                            continue;
+                        }
+                        if (medium.type == "gif" && !config.DownloadVideos)
+                        {
+                            continue;
+                        }
+                        if (medium.type == "audio" && !config.DownloadAudios)
+                        {
+                            continue;
+                        }
+
+                        if (!paidMessageCollection.PaidMessages.ContainsKey(medium.id))
+                        {
+                            await m_DBHelper.AddMedia(folder, medium.id, message.id, medium.source.source, null, null, null, "Messages", medium.type == "photo" ? "Images" : (medium.type == "video" || medium.type == "gif" ? "Videos" : (medium.type == "audio" ? "Audios" : null)), messagePreviewIds.Contains(medium.id) ? true : false, false, null);
+                            paidMessageCollection.PaidMessages.Add(medium.id, medium.source.source.ToString());
+                            paidMessageCollection.PaidMessageMedia.Add(medium);
+                        }
+                    }
+                    else if (medium.canView && medium.files != null && medium.files.drm != null)
+                    {
+                        if (medium.type == "photo" && !config.DownloadImages)
+                        {
+                            continue;
+                        }
+                        if (medium.type == "video" && !config.DownloadVideos)
+                        {
+                            continue;
+                        }
+                        if (medium.type == "gif" && !config.DownloadVideos)
+                        {
+                            continue;
+                        }
+                        if (medium.type == "audio" && !config.DownloadAudios)
+                        {
+                            continue;
+                        }
+
+                        if (!paidMessageCollection.PaidMessages.ContainsKey(medium.id))
+                        {
+                            await m_DBHelper.AddMedia(folder, medium.id, message.id, medium.videoSources._720, null, null, null, "Messages", medium.type == "photo" ? "Images" : (medium.type == "video" || medium.type == "gif" ? "Videos" : (medium.type == "audio" ? "Audios" : null)), messagePreviewIds.Contains(medium.id) ? true : false, false, null);
+                            paidMessageCollection.PaidMessages.Add(medium.id, $"{medium.files.drm.manifest.dash},{medium.files.drm.signature.dash.CloudFrontPolicy},{medium.files.drm.signature.dash.CloudFrontSignature},{medium.files.drm.signature.dash.CloudFrontKeyPairId},{medium.id},{message.id}");
+                            paidMessageCollection.PaidMessageMedia.Add(medium);
                         }
                     }
                 }
-                else if (messagePreviewIds.Count > 0)
+            }
+            else if (messagePreviewIds.Count > 0)
+            {
+                foreach (Messages.Medium medium in message.media)
                 {
-                    foreach(Messages.Medium medium in message.media)
+                    if (medium.canView && medium.source.source != null && !medium.source.source.Contains("upload") && messagePreviewIds.Contains(medium.id))
                     {
-                        if (medium.canView && medium.source.source != null && !medium.source.source.Contains("upload") && messagePreviewIds.Contains(medium.id))
+                        if (medium.type == "photo" && !config.DownloadImages)
                         {
-                            if (medium.type == "photo" && !config.DownloadImages)
-                            {
-                                continue;
-                            }
-                            if (medium.type == "video" && !config.DownloadVideos)
-                            {
-                                continue;
-                            }
-                            if (medium.type == "gif" && !config.DownloadVideos)
-                            {
-                                continue;
-                            }
-                            if (medium.type == "audio" && !config.DownloadAudios)
-                            {
-                                continue;
-                            }
-                            if (!paidMessageCollection.PaidMessages.ContainsKey(medium.id))
-                            {
-                                await m_DBHelper.AddMedia(folder, medium.id, message.id, medium.source.source, null, null, null, "Messages", medium.type == "photo" ? "Images" : (medium.type == "video" || medium.type == "gif" ? "Videos" : (medium.type == "audio" ? "Audios" : null)), messagePreviewIds.Contains(medium.id) ? true : false, false, null);
-                                paidMessageCollection.PaidMessages.Add(medium.id, medium.source.source.ToString());
-                                paidMessageCollection.PaidMessageMedia.Add(medium);
+                            continue;
+                        }
+                        if (medium.type == "video" && !config.DownloadVideos)
+                        {
+                            continue;
+                        }
+                        if (medium.type == "gif" && !config.DownloadVideos)
+                        {
+                            continue;
+                        }
+                        if (medium.type == "audio" && !config.DownloadAudios)
+                        {
+                            continue;
+                        }
+                        if (!paidMessageCollection.PaidMessages.ContainsKey(medium.id))
+                        {
+                            await m_DBHelper.AddMedia(folder, medium.id, message.id, medium.source.source, null, null, null, "Messages", medium.type == "photo" ? "Images" : (medium.type == "video" || medium.type == "gif" ? "Videos" : (medium.type == "audio" ? "Audios" : null)), messagePreviewIds.Contains(medium.id) ? true : false, false, null);
+                            paidMessageCollection.PaidMessages.Add(medium.id, medium.source.source.ToString());
+                            paidMessageCollection.PaidMessageMedia.Add(medium);
                         }
                     }
                     else if (medium.canView && medium.files != null && medium.files.drm != null && messagePreviewIds.Contains(medium.id))
@@ -1733,8 +1733,8 @@ public class APIHelper : IAPIHelper
                             paidMessageCollection.PaidMessageMedia.Add(medium);
                         }
                     }
-                    }
-                }            
+                }
+            }
 
             return paidMessageCollection;
         }
@@ -2132,7 +2132,7 @@ public class APIHelper : IAPIHelper
                         {
                             JObject user = await GetUserInfoById($"/users/list?x[]={purchase.fromUser.id}");
 
-                            if(user is null)
+                            if (user is null)
                             {
                                 if (!config.BypassContentForCreatorsWhoNoLongerExist)
                                 {

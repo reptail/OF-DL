@@ -397,7 +397,6 @@ public class Program
         }
     }
 
-
     private static async Task DownloadAllData(APIHelper m_ApiHelper, Auth Auth, Config Config)
     {
         DBHelper dBHelper = new DBHelper(Config);
@@ -405,117 +404,275 @@ public class Program
 
         Log.Debug("Calling DownloadAllData");
 
-        do
+        try
         {
-            DateTime startTime = DateTime.Now;
-            Dictionary<string, int> users = new();
-
-            Task<Dictionary<string, int>?> taskActive = m_ApiHelper.GetActiveSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config);
-            Task<Dictionary<string, int>?> taskExpired = Config!.IncludeExpiredSubscriptions
-                ? m_ApiHelper.GetExpiredSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config)
-                : Task.FromResult<Dictionary<string, int>?>([]);
-
-            await Task.WhenAll(taskActive, taskExpired);
-            Log.Debug("Subscriptions: ");
-
-            foreach (KeyValuePair<string, int> activeSub in await taskActive)
+            do
             {
-                if (!users.ContainsKey(activeSub.Key))
-                {
-                    users.Add(activeSub.Key, activeSub.Value);
-                    Log.Debug($"Name: {activeSub.Key} ID: {activeSub.Value}");
-                }
-            }
+                DateTime startTime = DateTime.Now;
+                Dictionary<string, int> users = new();
 
-            if (Config!.IncludeExpiredSubscriptions)
-            {
-                Log.Debug("Inactive Subscriptions: ");
-                foreach (KeyValuePair<string, int> expiredSub in await taskExpired)
+                Task<Dictionary<string, int>?> taskActive = m_ApiHelper.GetActiveSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config);
+                Task<Dictionary<string, int>?> taskExpired = Config!.IncludeExpiredSubscriptions
+                    ? m_ApiHelper.GetExpiredSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config)
+                    : Task.FromResult<Dictionary<string, int>?>([]);
+
+                await Task.WhenAll(taskActive, taskExpired);
+                Log.Debug("Subscriptions: ");
+
+                foreach (KeyValuePair<string, int> activeSub in await taskActive)
                 {
-                    if (!users.ContainsKey(expiredSub.Key))
+                    if (!users.ContainsKey(activeSub.Key))
                     {
-                        users.Add(expiredSub.Key, expiredSub.Value);
-                        Log.Debug($"Name: {expiredSub.Key} ID: {expiredSub.Value}");
+                        users.Add(activeSub.Key, activeSub.Value);
+                        Log.Debug($"Name: {activeSub.Key} ID: {activeSub.Value}");
                     }
                 }
-            }
-            await dBHelper.CreateUsersDB(users);
-            Dictionary<string, int> lists = await m_ApiHelper.GetLists("/lists", Config);
-            KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP;
-            if (Config.NonInteractiveMode && Config.NonInteractiveModePurchasedTab)
-            {
-                hasSelectedUsersKVP = new KeyValuePair<bool, Dictionary<string, int>>(true, new Dictionary<string, int> { { "PurchasedTab", 0 } });
-            }
-            else if (Config.NonInteractiveMode && Config.NonInteractiveSpecificLists is not null && Config.NonInteractiveSpecificLists.Length > 0)
-            {
-                HashSet<string> listUsernames = [];
-                foreach (string listName in Config.NonInteractiveSpecificLists)
-                {
-                    if (!lists.TryGetValue(listName, out int listId))
-                        continue;
 
+                if (Config!.IncludeExpiredSubscriptions)
+                {
+                    Log.Debug("Inactive Subscriptions: ");
+                    foreach (KeyValuePair<string, int> expiredSub in await taskExpired)
+                    {
+                        if (!users.ContainsKey(expiredSub.Key))
+                        {
+                            users.Add(expiredSub.Key, expiredSub.Value);
+                            Log.Debug($"Name: {expiredSub.Key} ID: {expiredSub.Value}");
+                        }
+                    }
+                }
+                await dBHelper.CreateUsersDB(users);
+                Dictionary<string, int> lists = await m_ApiHelper.GetLists("/lists", Config);
+                KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP;
+                if (Config.NonInteractiveMode && Config.NonInteractiveModePurchasedTab)
+                {
+                    hasSelectedUsersKVP = new KeyValuePair<bool, Dictionary<string, int>>(true, new Dictionary<string, int> { { "PurchasedTab", 0 } });
+                }
+                else if (Config.NonInteractiveMode && Config.NonInteractiveSpecificLists is not null && Config.NonInteractiveSpecificLists.Length > 0)
+                {
+                    HashSet<string> listUsernames = [];
+                    foreach (string listName in Config.NonInteractiveSpecificLists)
+                    {
+                        if (!lists.TryGetValue(listName, out int listId))
+                            continue;
+
+                        List<string> usernames = await m_ApiHelper.GetListUsers($"/lists/{listId}/users", Config);
+                        foreach (string user in usernames)
+                            listUsernames.Add(user);
+                    }
+                    users = users.Where(x => listUsernames.Contains(x.Key)).Distinct().ToDictionary(x => x.Key, x => x.Value);
+                    hasSelectedUsersKVP = new KeyValuePair<bool, Dictionary<string, int>>(true, users);
+                }
+                else if (Config.NonInteractiveMode && Config.NonInteractiveSpecificUsers is not null && Config.NonInteractiveSpecificUsers.Length > 0)
+                {
+                    HashSet<string> usernames = [.. Config.NonInteractiveSpecificUsers];
+                    users = users.Where(u => usernames.Contains(u.Key)).ToDictionary(u => u.Key, u => u.Value);
+                    hasSelectedUsersKVP = new KeyValuePair<bool, Dictionary<string, int>>(true, users);
+                }
+                else if (Config.NonInteractiveMode && string.IsNullOrEmpty(Config.NonInteractiveModeListName))
+                {
+                    hasSelectedUsersKVP = new KeyValuePair<bool, Dictionary<string, int>>(true, users);
+                }
+                else if (Config.NonInteractiveMode && !string.IsNullOrEmpty(Config.NonInteractiveModeListName))
+                {
+                    List<string> listUsernames = new();
+                    int listId = lists[Config.NonInteractiveModeListName];
                     List<string> usernames = await m_ApiHelper.GetListUsers($"/lists/{listId}/users", Config);
                     foreach (string user in usernames)
+                    {
                         listUsernames.Add(user);
+                    }
+                    var selectedUsers = users.Where(x => listUsernames.Contains($"{x.Key}")).Distinct().ToDictionary(x => x.Key, x => x.Value);
+                    hasSelectedUsersKVP = new KeyValuePair<bool, Dictionary<string, int>>(true, selectedUsers);
                 }
-                users = users.Where(x => listUsernames.Contains(x.Key)).Distinct().ToDictionary(x => x.Key, x => x.Value);
-                hasSelectedUsersKVP = new KeyValuePair<bool, Dictionary<string, int>>(true, users);
-            }
-            else if (Config.NonInteractiveMode && Config.NonInteractiveSpecificUsers is not null && Config.NonInteractiveSpecificUsers.Length > 0)
-            {
-                HashSet<string> usernames = [.. Config.NonInteractiveSpecificUsers];
-                users = users.Where(u => usernames.Contains(u.Key)).ToDictionary(u => u.Key, u => u.Value);
-                hasSelectedUsersKVP = new KeyValuePair<bool, Dictionary<string, int>>(true, users);
-            }
-            else if (Config.NonInteractiveMode && string.IsNullOrEmpty(Config.NonInteractiveModeListName))
-            {
-                hasSelectedUsersKVP = new KeyValuePair<bool, Dictionary<string, int>>(true, users);
-            }
-            else if (Config.NonInteractiveMode && !string.IsNullOrEmpty(Config.NonInteractiveModeListName))
-            {
-                List<string> listUsernames = new();
-                int listId = lists[Config.NonInteractiveModeListName];
-                List<string> usernames = await m_ApiHelper.GetListUsers($"/lists/{listId}/users", Config);
-                foreach (string user in usernames)
+                else
                 {
-                    listUsernames.Add(user);
+                    var userSelectionResult = await HandleUserSelection(m_ApiHelper, Config, users, lists);
+
+                    Config = userSelectionResult.updatedConfig;
+                    hasSelectedUsersKVP = new KeyValuePair<bool, Dictionary<string, int>>(userSelectionResult.IsExit, userSelectionResult.selectedUsers);
                 }
-                var selectedUsers = users.Where(x => listUsernames.Contains($"{x.Key}")).Distinct().ToDictionary(x => x.Key, x => x.Value);
-                hasSelectedUsersKVP = new KeyValuePair<bool, Dictionary<string, int>>(true, selectedUsers);
-            }
-            else
-            {
-                var userSelectionResult = await HandleUserSelection(m_ApiHelper, Config, users, lists);
 
-                Config = userSelectionResult.updatedConfig;
-                hasSelectedUsersKVP = new KeyValuePair<bool, Dictionary<string, int>>(userSelectionResult.IsExit, userSelectionResult.selectedUsers);
-            }
+                if (hasSelectedUsersKVP.Key && hasSelectedUsersKVP.Value != null && hasSelectedUsersKVP.Value.ContainsKey("SinglePost"))
+                {
+                    string postUrl = AnsiConsole.Prompt(
+                            new TextPrompt<string>("[red]Please enter a post URL: [/]")
+                                .ValidationErrorMessage("[red]Please enter a valid post URL[/]")
+                                .Validate(url =>
+                                {
+                                    Log.Debug($"Single Post URL: {url}");
+                                    Regex regex = new Regex("https://onlyfans\\.com/[0-9]+/[A-Za-z0-9]+", RegexOptions.IgnoreCase);
+                                    if (regex.IsMatch(url))
+                                    {
+                                        return ValidationResult.Success();
+                                    }
+                                    Log.Error("Post URL invalid");
+                                    return ValidationResult.Error("[red]Please enter a valid post URL[/]");
+                                }));
 
-            if (hasSelectedUsersKVP.Key && hasSelectedUsersKVP.Value != null && hasSelectedUsersKVP.Value.ContainsKey("SinglePost"))
-            {
-                string postUrl = AnsiConsole.Prompt(
-                        new TextPrompt<string>("[red]Please enter a post URL: [/]")
-                            .ValidationErrorMessage("[red]Please enter a valid post URL[/]")
+                    long post_id = Convert.ToInt64(postUrl.Split("/")[3]);
+                    string username = postUrl.Split("/")[4];
+
+                    Log.Debug($"Single Post ID: {post_id.ToString()}");
+                    Log.Debug($"Single Post Creator: {username}");
+
+                    if (users.ContainsKey(username))
+                    {
+                        string path = "";
+                        if (!string.IsNullOrEmpty(Config.DownloadPath))
+                        {
+                            path = System.IO.Path.Combine(Config.DownloadPath, username);
+                        }
+                        else
+                        {
+                            path = $"__user_data__/sites/OnlyFans/{username}";
+                        }
+
+                        Log.Debug($"Download path: {path}");
+
+                        if (!Directory.Exists(path))
+                        {
+                            Directory.CreateDirectory(path);
+                            AnsiConsole.Markup($"[red]Created folder for {username}\n[/]");
+                            Log.Debug($"Created folder for {username}");
+                        }
+                        else
+                        {
+                            AnsiConsole.Markup($"[red]Folder for {username} already created\n[/]");
+                        }
+
+                        await dBHelper.CreateDB(path);
+
+                        var downloadContext = new DownloadContext(Auth, Config, GetCreatorFileNameFormatConfig(Config, username), m_ApiHelper, dBHelper);
+
+                        await DownloadSinglePost(downloadContext, post_id, path, users);
+                    }
+                }
+                else if (hasSelectedUsersKVP.Key && hasSelectedUsersKVP.Value != null && hasSelectedUsersKVP.Value.ContainsKey("PurchasedTab"))
+                {
+                    Dictionary<string, int> purchasedTabUsers = await m_ApiHelper.GetPurchasedTabUsers("/posts/paid", Config, users);
+                    AnsiConsole.Markup($"[red]Checking folders for Users in Purchased Tab\n[/]");
+                    foreach (KeyValuePair<string, int> user in purchasedTabUsers)
+                    {
+                        string path = "";
+                        if (!string.IsNullOrEmpty(Config.DownloadPath))
+                        {
+                            path = System.IO.Path.Combine(Config.DownloadPath, user.Key);
+                        }
+                        else
+                        {
+                            path = $"__user_data__/sites/OnlyFans/{user.Key}";
+                        }
+
+                        Log.Debug($"Download path: {path}");
+
+                        await dBHelper.CheckUsername(user, path);
+
+                        if (!Directory.Exists(path))
+                        {
+                            Directory.CreateDirectory(path);
+                            AnsiConsole.Markup($"[red]Created folder for {user.Key}\n[/]");
+                            Log.Debug($"Created folder for {user.Key}");
+                        }
+                        else
+                        {
+                            AnsiConsole.Markup($"[red]Folder for {user.Key} already created\n[/]");
+                            Log.Debug($"Folder for {user.Key} already created");
+                        }
+
+                        Entities.User user_info = await m_ApiHelper.GetUserInfo($"/users/{user.Key}");
+
+                        await dBHelper.CreateDB(path);
+                    }
+
+                    string p = "";
+                    if (!string.IsNullOrEmpty(Config.DownloadPath))
+                    {
+                        p = Config.DownloadPath;
+                    }
+                    else
+                    {
+                        p = $"__user_data__/sites/OnlyFans/";
+                    }
+
+                    Log.Debug($"Download path: {p}");
+
+                    List<PurchasedTabCollection> purchasedTabCollections = await m_ApiHelper.GetPurchasedTab("/posts/paid", p, Config, users);
+                    foreach (PurchasedTabCollection purchasedTabCollection in purchasedTabCollections)
+                    {
+                        AnsiConsole.Markup($"[red]\nScraping Data for {purchasedTabCollection.Username}\n[/]");
+                        string path = "";
+                        if (!string.IsNullOrEmpty(Config.DownloadPath))
+                        {
+                            path = System.IO.Path.Combine(Config.DownloadPath, purchasedTabCollection.Username);
+                        }
+                        else
+                        {
+                            path = $"__user_data__/sites/OnlyFans/{purchasedTabCollection.Username}";
+                        }
+
+
+                        Log.Debug($"Download path: {path}");
+
+                        var downloadContext = new DownloadContext(Auth, Config, GetCreatorFileNameFormatConfig(Config, purchasedTabCollection.Username), m_ApiHelper, dBHelper);
+
+                        int paidPostCount = 0;
+                        int paidMessagesCount = 0;
+                        (paidPostCount, int newPaidPostCount) = await DownloadPaidPostsPurchasedTab(downloadContext, purchasedTabCollection.PaidPosts, users.FirstOrDefault(u => u.Value == purchasedTabCollection.UserId), paidPostCount, path, users);
+                        (paidMessagesCount, int newPaidMessagesCount) = await DownloadPaidMessagesPurchasedTab(downloadContext, purchasedTabCollection.PaidMessages, users.FirstOrDefault(u => u.Value == purchasedTabCollection.UserId), paidMessagesCount, path, users);
+
+                        AnsiConsole.Markup("\n");
+                        AnsiConsole.Write(new BreakdownChart()
+                        .FullSize()
+                        .AddItem("Paid Posts", paidPostCount, Color.Red)
+                        .AddItem("Paid Messages", paidMessagesCount, Color.Aqua));
+                        AnsiConsole.Markup("\n");
+
+                        AppendLog(purchasedTabCollection.Username, newPaidPostCount, newPaidMessagesCount);
+                    }
+                    DateTime endTime = DateTime.Now;
+                    TimeSpan totalTime = endTime - startTime;
+                    AnsiConsole.Markup($"[green]Scrape Completed in {totalTime.TotalMinutes:0.00} minutes\n[/]");
+                    Log.Debug($"Scrape Completed in {totalTime.TotalMinutes:0.00} minutes");
+
+                    AppendScrape("PurchasedTab", startTime, totalTime.TotalMinutes, Config);
+                }
+                else if (hasSelectedUsersKVP.Key && hasSelectedUsersKVP.Value != null && hasSelectedUsersKVP.Value.ContainsKey("SingleMessage"))
+                {
+                    string messageUrl = AnsiConsole.Prompt(
+                        new TextPrompt<string>("[red]Please enter a message URL: [/]")
+                            .ValidationErrorMessage("[red]Please enter a valid message URL[/]")
                             .Validate(url =>
                             {
-                                Log.Debug($"Single Post URL: {url}");
-                                Regex regex = new Regex("https://onlyfans\\.com/[0-9]+/[A-Za-z0-9]+", RegexOptions.IgnoreCase);
+                                Log.Debug($"Single Message URL: {url}");
+                                Regex regex = new Regex("https://onlyfans\\.com/my/chats/chat/[0-9]+/\\?firstId=[0-9]+$", RegexOptions.IgnoreCase);
                                 if (regex.IsMatch(url))
                                 {
                                     return ValidationResult.Success();
                                 }
-                                Log.Error("Post URL invalid");
-                                return ValidationResult.Error("[red]Please enter a valid post URL[/]");
+                                Log.Error("Message URL invalid");
+                                return ValidationResult.Error("[red]Please enter a valid message URL[/]");
                             }));
 
-                long post_id = Convert.ToInt64(postUrl.Split("/")[3]);
-                string username = postUrl.Split("/")[4];
 
-                Log.Debug($"Single Post ID: {post_id.ToString()}");
-                Log.Debug($"Single Post Creator: {username}");
+                    long message_id = Convert.ToInt64(messageUrl.Split("?firstId=")[1]);
+                    long user_id = Convert.ToInt64(messageUrl.Split("/")[6]);
+                    JObject user = await m_ApiHelper.GetUserInfoById($"/users/list?x[]={user_id.ToString()}");
+                    string username = string.Empty;
 
-                if (users.ContainsKey(username))
-                {
+                    Log.Debug($"Message ID: {message_id}");
+                    Log.Debug($"User ID: {user_id}");
+
+                    if (user is null)
+                    {
+                        username = $"Deleted User - {user_id.ToString()}";
+                        Log.Debug("Content creator not longer exists - ", user_id.ToString());
+                    }
+                    else if (!string.IsNullOrEmpty(user[user_id.ToString()]["username"].ToString()))
+                    {
+                        username = user[user_id.ToString()]["username"].ToString();
+                        Log.Debug("Content creator: ", username);
+                    }
+
                     string path = "";
                     if (!string.IsNullOrEmpty(Config.DownloadPath))
                     {
@@ -526,317 +683,166 @@ public class Program
                         path = $"__user_data__/sites/OnlyFans/{username}";
                     }
 
-                    Log.Debug($"Download path: {path}");
+                    Log.Debug("Download path: ", path);
 
-                    if (!Directory.Exists(path)) 
+                    if (!Directory.Exists(path))
                     {
-                        Directory.CreateDirectory(path); 
+                        Directory.CreateDirectory(path);
                         AnsiConsole.Markup($"[red]Created folder for {username}\n[/]");
                         Log.Debug($"Created folder for {username}");
                     }
                     else
                     {
                         AnsiConsole.Markup($"[red]Folder for {username} already created\n[/]");
+                        Log.Debug($"Folder for {username} already created");
                     }
 
                     await dBHelper.CreateDB(path);
 
                     var downloadContext = new DownloadContext(Auth, Config, GetCreatorFileNameFormatConfig(Config, username), m_ApiHelper, dBHelper);
 
-                    await DownloadSinglePost(downloadContext, post_id, path, users);
+                    await DownloadPaidMessage(downloadContext, hasSelectedUsersKVP, username, 1, path, message_id);
+
                 }
-            }
-            else if (hasSelectedUsersKVP.Key && hasSelectedUsersKVP.Value != null && hasSelectedUsersKVP.Value.ContainsKey("PurchasedTab"))
-            {
-                Dictionary<string, int> purchasedTabUsers = await m_ApiHelper.GetPurchasedTabUsers("/posts/paid", Config, users);
-                AnsiConsole.Markup($"[red]Checking folders for Users in Purchased Tab\n[/]");
-                foreach (KeyValuePair<string, int> user in purchasedTabUsers)
+                else if (hasSelectedUsersKVP.Key && !hasSelectedUsersKVP.Value.ContainsKey("ConfigChanged"))
                 {
-                    string path = "";
-                    if (!string.IsNullOrEmpty(Config.DownloadPath))
+                    //Iterate over each user in the list of users
+                    foreach (KeyValuePair<string, int> user in hasSelectedUsersKVP.Value)
                     {
-                        path = System.IO.Path.Combine(Config.DownloadPath, user.Key);
-                    }
-                    else
-                    {
-                        path = $"__user_data__/sites/OnlyFans/{user.Key}";
-                    }
+                        int paidPostCount = 0;
+                        int postCount = 0;
+                        int archivedCount = 0;
+                        int streamsCount = 0;
+                        int storiesCount = 0;
+                        int highlightsCount = 0;
+                        int messagesCount = 0;
+                        int paidMessagesCount = 0;
+                        int newPaidPostCount = 0;
+                        int newPostCount = 0;
+                        int newArchivedCount = 0;
+                        int newStreamsCount = 0;
+                        int newStoriesCount = 0;
+                        int newHighlightsCount = 0;
+                        int newMessagesCount = 0;
+                        int newPaidMessagesCount = 0;
+                        AnsiConsole.Markup($"[red]\nScraping Data for {user.Key}\n[/]");
 
-                    Log.Debug($"Download path: {path}");
+                        Log.Debug($"Scraping Data for {user.Key}");
 
-                    await dBHelper.CheckUsername(user, path);
-
-                    if (!Directory.Exists(path))
-                    {
-                        Directory.CreateDirectory(path);
-                        AnsiConsole.Markup($"[red]Created folder for {user.Key}\n[/]");
-                        Log.Debug($"Created folder for {user.Key}");
-                    }
-                    else
-                    {
-                        AnsiConsole.Markup($"[red]Folder for {user.Key} already created\n[/]");
-                        Log.Debug($"Folder for {user.Key} already created");
-                    }
-
-                    Entities.User user_info = await m_ApiHelper.GetUserInfo($"/users/{user.Key}");
-
-                    await dBHelper.CreateDB(path);
-                }
-
-                string p = "";
-                if (!string.IsNullOrEmpty(Config.DownloadPath))
-                {
-                    p = Config.DownloadPath;
-                }
-                else
-                {
-                    p = $"__user_data__/sites/OnlyFans/";
-                }
-
-                Log.Debug($"Download path: {p}");
-
-                List<PurchasedTabCollection> purchasedTabCollections = await m_ApiHelper.GetPurchasedTab("/posts/paid", p, Config, users);
-                foreach (PurchasedTabCollection purchasedTabCollection in purchasedTabCollections)
-                {
-                    AnsiConsole.Markup($"[red]\nScraping Data for {purchasedTabCollection.Username}\n[/]");
-                    string path = "";
-                    if (!string.IsNullOrEmpty(Config.DownloadPath))
-                    {
-                        path = System.IO.Path.Combine(Config.DownloadPath, purchasedTabCollection.Username);
-                    }
-                    else
-                    {
-                        path = $"__user_data__/sites/OnlyFans/{purchasedTabCollection.Username}"; 
-                    }
-
-
-                    Log.Debug($"Download path: {path}");
-
-                    var downloadContext = new DownloadContext(Auth, Config, GetCreatorFileNameFormatConfig(Config, purchasedTabCollection.Username), m_ApiHelper, dBHelper);
-
-                    int paidPostCount = 0;
-                    int paidMessagesCount = 0;
-                    (paidPostCount, int newPaidPostCount) = await DownloadPaidPostsPurchasedTab(downloadContext, purchasedTabCollection.PaidPosts, users.FirstOrDefault(u => u.Value == purchasedTabCollection.UserId), paidPostCount, path, users);
-                    (paidMessagesCount, int newPaidMessagesCount) = await DownloadPaidMessagesPurchasedTab(downloadContext, purchasedTabCollection.PaidMessages, users.FirstOrDefault(u => u.Value == purchasedTabCollection.UserId), paidMessagesCount, path, users);
-
-                    AnsiConsole.Markup("\n");
-                    AnsiConsole.Write(new BreakdownChart()
-                    .FullSize()
-                    .AddItem("Paid Posts", paidPostCount, Color.Red)
-                    .AddItem("Paid Messages", paidMessagesCount, Color.Aqua));
-                    AnsiConsole.Markup("\n");
-
-                    AppendLog(purchasedTabCollection.Username, newPaidPostCount, newPaidMessagesCount);
-                }
-                DateTime endTime = DateTime.Now;
-                TimeSpan totalTime = endTime - startTime;
-                AnsiConsole.Markup($"[green]Scrape Completed in {totalTime.TotalMinutes:0.00} minutes\n[/]");
-                Log.Debug($"Scrape Completed in {totalTime.TotalMinutes:0.00} minutes");
-
-                AppendScrape("PurchasedTab", startTime, totalTime.TotalMinutes, Config);
-            }
-            else if (hasSelectedUsersKVP.Key && hasSelectedUsersKVP.Value != null && hasSelectedUsersKVP.Value.ContainsKey("SingleMessage"))
-            {
-                string messageUrl = AnsiConsole.Prompt(
-                    new TextPrompt<string>("[red]Please enter a message URL: [/]")
-                        .ValidationErrorMessage("[red]Please enter a valid message URL[/]")
-                        .Validate(url =>
+                        string path = "";
+                        if (!string.IsNullOrEmpty(Config.DownloadPath))
                         {
-                            Log.Debug($"Single Message URL: {url}");
-                            Regex regex = new Regex("https://onlyfans\\.com/my/chats/chat/[0-9]+/\\?firstId=[0-9]+$", RegexOptions.IgnoreCase);
-                            if (regex.IsMatch(url))
-                            {
-                                return ValidationResult.Success();
-                            }
-                            Log.Error("Message URL invalid");
-                            return ValidationResult.Error("[red]Please enter a valid message URL[/]");
-                        }));
-
-
-                long message_id = Convert.ToInt64(messageUrl.Split("?firstId=")[1]);
-                long user_id = Convert.ToInt64(messageUrl.Split("/")[6]);
-                JObject user = await m_ApiHelper.GetUserInfoById($"/users/list?x[]={user_id.ToString()}");
-                string username = string.Empty;
-
-                Log.Debug($"Message ID: {message_id}");
-                Log.Debug($"User ID: {user_id}");
-
-                if (user is null)
-                {
-                    username = $"Deleted User - {user_id.ToString()}";
-                    Log.Debug("Content creator not longer exists - ", user_id.ToString());
-                }
-                else if (!string.IsNullOrEmpty(user[user_id.ToString()]["username"].ToString()))
-                {
-                    username = user[user_id.ToString()]["username"].ToString();
-                    Log.Debug("Content creator: ", username);
-                }
-
-                string path = "";
-                if (!string.IsNullOrEmpty(Config.DownloadPath))
-                {
-                    path = System.IO.Path.Combine(Config.DownloadPath, username);
-                }
-                else
-                {
-                    path = $"__user_data__/sites/OnlyFans/{username}"; 
-                }
-
-                Log.Debug("Download path: ", path);
-
-                if (!Directory.Exists(path)) 
-                {
-                    Directory.CreateDirectory(path); 
-                    AnsiConsole.Markup($"[red]Created folder for {username}\n[/]");
-                    Log.Debug($"Created folder for {username}");
-                }
-                else
-                {
-                    AnsiConsole.Markup($"[red]Folder for {username} already created\n[/]");
-                    Log.Debug($"Folder for {username} already created");
-                }
-
-                await dBHelper.CreateDB(path);
-
-                var downloadContext = new DownloadContext(Auth, Config, GetCreatorFileNameFormatConfig(Config, username), m_ApiHelper, dBHelper);
-
-                await DownloadPaidMessage(downloadContext, hasSelectedUsersKVP, username, 1, path, message_id);
-
-            }
-            else if (hasSelectedUsersKVP.Key && !hasSelectedUsersKVP.Value.ContainsKey("ConfigChanged"))
-            {
-                //Iterate over each user in the list of users
-                foreach (KeyValuePair<string, int> user in hasSelectedUsersKVP.Value)
-                {
-                    int paidPostCount = 0;
-                    int postCount = 0;
-                    int archivedCount = 0;
-                    int streamsCount = 0;
-                    int storiesCount = 0;
-                    int highlightsCount = 0;
-                    int messagesCount = 0;
-                    int paidMessagesCount = 0;
-                    int newPaidPostCount = 0;
-                    int newPostCount = 0;
-                    int newArchivedCount = 0;
-                    int newStreamsCount = 0;
-                    int newStoriesCount = 0;
-                    int newHighlightsCount = 0;
-                    int newMessagesCount = 0;
-                    int newPaidMessagesCount = 0;
-                    AnsiConsole.Markup($"[red]\nScraping Data for {user.Key}\n[/]");
-
-                    Log.Debug($"Scraping Data for {user.Key}");
-
-                    string path = "";
-                    if (!string.IsNullOrEmpty(Config.DownloadPath))
-                    {
-                        path = System.IO.Path.Combine(Config.DownloadPath, user.Key);
-                    }
-                    else
-                    {
-                        path = $"__user_data__/sites/OnlyFans/{user.Key}"; 
-                    }
-
-                    Log.Debug("Download path: ", path);
-
-                    await dBHelper.CheckUsername(user, path);
-
-                    if (!Directory.Exists(path)) 
-                    {
-                        Directory.CreateDirectory(path); 
-                        AnsiConsole.Markup($"[red]Created folder for {user.Key}\n[/]");
-                        Log.Debug($"Created folder for {user.Key}");
-                    }
-                    else
-                    {
-                        AnsiConsole.Markup($"[red]Folder for {user.Key} already created\n[/]");
-                        Log.Debug($"Folder for {user.Key} already created");
-                    }
-
-                    await dBHelper.CreateDB(path);
-
-                    var downloadContext = new DownloadContext(Auth, Config, GetCreatorFileNameFormatConfig(Config, user.Key), m_ApiHelper, dBHelper);
-
-                    if (Config.DownloadAvatarHeaderPhoto)
-                    {
-                        Entities.User? user_info = await m_ApiHelper.GetUserInfo($"/users/{user.Key}");
-                        if (user_info != null)
-                        {
-                            await downloadContext.DownloadHelper.DownloadAvatarHeader(user_info.avatar, user_info.header, path, user.Key);
+                            path = System.IO.Path.Combine(Config.DownloadPath, user.Key);
                         }
+                        else
+                        {
+                            path = $"__user_data__/sites/OnlyFans/{user.Key}";
+                        }
+
+                        Log.Debug("Download path: ", path);
+
+                        await dBHelper.CheckUsername(user, path);
+
+                        if (!Directory.Exists(path))
+                        {
+                            Directory.CreateDirectory(path);
+                            AnsiConsole.Markup($"[red]Created folder for {user.Key}\n[/]");
+                            Log.Debug($"Created folder for {user.Key}");
+                        }
+                        else
+                        {
+                            AnsiConsole.Markup($"[red]Folder for {user.Key} already created\n[/]");
+                            Log.Debug($"Folder for {user.Key} already created");
+                        }
+
+                        await dBHelper.CreateDB(path);
+
+                        var downloadContext = new DownloadContext(Auth, Config, GetCreatorFileNameFormatConfig(Config, user.Key), m_ApiHelper, dBHelper);
+
+                        if (Config.DownloadAvatarHeaderPhoto)
+                        {
+                            Entities.User? user_info = await m_ApiHelper.GetUserInfo($"/users/{user.Key}");
+                            if (user_info != null)
+                            {
+                                await downloadContext.DownloadHelper.DownloadAvatarHeader(user_info.avatar, user_info.header, path, user.Key);
+                            }
+                        }
+
+                        if (Config.DownloadPaidPosts)
+                        {
+                            (paidPostCount, newPaidPostCount) = await DownloadPaidPosts(downloadContext, hasSelectedUsersKVP, user, paidPostCount, path);
+                        }
+
+                        if (Config.DownloadPosts)
+                        {
+                            (postCount, newPostCount) = await DownloadFreePosts(downloadContext, hasSelectedUsersKVP, user, postCount, path);
+                        }
+
+                        if (Config.DownloadArchived)
+                        {
+                            (archivedCount, newArchivedCount) = await DownloadArchived(downloadContext, hasSelectedUsersKVP, user, archivedCount, path);
+                        }
+
+                        if (Config.DownloadStreams)
+                        {
+                            (streamsCount, newStreamsCount) = await DownloadStreams(downloadContext, hasSelectedUsersKVP, user, streamsCount, path);
+                        }
+
+                        if (Config.DownloadStories)
+                        {
+                            (storiesCount, newStoriesCount) = await DownloadStories(downloadContext, user, storiesCount, path);
+                        }
+
+                        if (Config.DownloadHighlights)
+                        {
+                            (highlightsCount, newHighlightsCount) = await DownloadHighlights(downloadContext, user, highlightsCount, path);
+                        }
+
+                        if (Config.DownloadMessages)
+                        {
+                            (messagesCount, newMessagesCount) = await DownloadMessages(downloadContext, hasSelectedUsersKVP, user, messagesCount, path);
+                        }
+
+                        if (Config.DownloadPaidMessages)
+                        {
+                            (paidMessagesCount, newPaidMessagesCount) = await DownloadPaidMessages(downloadContext, hasSelectedUsersKVP, user, paidMessagesCount, path);
+                        }
+
+                        AnsiConsole.Markup("\n");
+                        AnsiConsole.Write(new BreakdownChart()
+                        .FullSize()
+                        .AddItem("Paid Posts", paidPostCount, Color.Red)
+                        .AddItem("Posts", postCount, Color.Blue)
+                        .AddItem("Archived", archivedCount, Color.Green)
+                        .AddItem("Streams", streamsCount, Color.Purple)
+                        .AddItem("Stories", storiesCount, Color.Yellow)
+                        .AddItem("Highlights", highlightsCount, Color.Orange1)
+                        .AddItem("Messages", messagesCount, Color.LightGreen)
+                        .AddItem("Paid Messages", paidMessagesCount, Color.Aqua));
+                        AnsiConsole.Markup("\n");
+
+                        AppendLog(user.Key, newPostCount, newArchivedCount, newStreamsCount, newStoriesCount, newHighlightsCount, newMessagesCount, newPaidPostCount, newPaidMessagesCount);
                     }
+                    DateTime endTime = DateTime.Now;
+                    TimeSpan totalTime = endTime - startTime;
+                    AnsiConsole.Markup($"[green]Scrape Completed in {totalTime.TotalMinutes:0.00} minutes\n[/]");
 
-                    if (Config.DownloadPaidPosts)
-                    {
-                        (paidPostCount, newPaidPostCount) = await DownloadPaidPosts(downloadContext, hasSelectedUsersKVP, user, paidPostCount, path);
-                    }
-
-                    if (Config.DownloadPosts)
-                    {
-                        (postCount, newPostCount) = await DownloadFreePosts(downloadContext, hasSelectedUsersKVP, user, postCount, path);
-                    }
-
-                    if (Config.DownloadArchived)
-                    {
-                        (archivedCount, newArchivedCount) = await DownloadArchived(downloadContext, hasSelectedUsersKVP, user, archivedCount, path);
-                    }
-
-                    if (Config.DownloadStreams)
-                    {
-                        (streamsCount, newStreamsCount) = await DownloadStreams(downloadContext, hasSelectedUsersKVP, user, streamsCount, path);
-                    }
-
-                    if (Config.DownloadStories)
-                    {
-                        (storiesCount, newStoriesCount) = await DownloadStories(downloadContext, user, storiesCount, path);
-                    }
-
-                    if (Config.DownloadHighlights)
-                    {
-                        (highlightsCount, newHighlightsCount) = await DownloadHighlights(downloadContext, user, highlightsCount, path);
-                    }
-
-                    if (Config.DownloadMessages)
-                    {
-                        (messagesCount, newMessagesCount) = await DownloadMessages(downloadContext, hasSelectedUsersKVP, user, messagesCount, path);
-                    }
-
-                    if (Config.DownloadPaidMessages)
-                    {
-                        (paidMessagesCount, newPaidMessagesCount) = await DownloadPaidMessages(downloadContext, hasSelectedUsersKVP, user, paidMessagesCount, path);
-                    }
-
-                    AnsiConsole.Markup("\n");
-                    AnsiConsole.Write(new BreakdownChart()
-                    .FullSize()
-                    .AddItem("Paid Posts", paidPostCount, Color.Red)
-                    .AddItem("Posts", postCount, Color.Blue)
-                    .AddItem("Archived", archivedCount, Color.Green)
-                    .AddItem("Streams", streamsCount, Color.Purple)
-                    .AddItem("Stories", storiesCount, Color.Yellow)
-                    .AddItem("Highlights", highlightsCount, Color.Orange1)
-                    .AddItem("Messages", messagesCount, Color.LightGreen)
-                    .AddItem("Paid Messages", paidMessagesCount, Color.Aqua));
-                    AnsiConsole.Markup("\n");
-
-                    AppendLog(user.Key, newPostCount, newArchivedCount, newStreamsCount, newStoriesCount, newHighlightsCount, newMessagesCount, newPaidPostCount, newPaidMessagesCount);
+                    AppendScrape("Scrape", startTime, totalTime.TotalMinutes, Config!);
                 }
-                DateTime endTime = DateTime.Now;
-                TimeSpan totalTime = endTime - startTime;
-                AnsiConsole.Markup($"[green]Scrape Completed in {totalTime.TotalMinutes:0.00} minutes\n[/]");
-
-                AppendScrape("Scrape", startTime, totalTime.TotalMinutes, Config!);
-            }
-            else if (hasSelectedUsersKVP.Key && hasSelectedUsersKVP.Value != null && hasSelectedUsersKVP.Value.ContainsKey("ConfigChanged"))
-            {
-                continue;
-            }
-            else
-            {
-                break;
-            }
-        } while (!Config.NonInteractiveMode);
+                else if (hasSelectedUsersKVP.Key && hasSelectedUsersKVP.Value != null && hasSelectedUsersKVP.Value.ContainsKey("ConfigChanged"))
+                {
+                    continue;
+                }
+                else
+                {
+                    break;
+                }
+            } while (!Config.NonInteractiveMode);
+        }
+        finally
+        {
+            dBHelper.CloseAllConnections();
+        }
 
         WriteLogFile(Config);
     }
