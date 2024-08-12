@@ -1,18 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using OF_DL.Enumurations;
-using System.IO;
 using Microsoft.Data.Sqlite;
-using Serilog;
 using OF_DL.Entities;
+using Serilog;
+using System.Text;
 
 namespace OF_DL.Helpers
 {
     public class DBHelper : IDBHelper
     {
+        private static readonly Dictionary<string, SqliteConnection> _connections = [];
+
         private readonly IDownloadConfig downloadConfig;
 
         public DBHelper(IDownloadConfig downloadConfig)
@@ -32,9 +28,7 @@ namespace OF_DL.Helpers
                 string dbFilePath = $"{folder}/Metadata/user_data.db";
 
                 // connect to the new database file
-                using SqliteConnection connection = new($"Data Source={dbFilePath}");
-                // open the connection
-                connection.Open();
+                SqliteConnection connection = await GetAndOpenConnectionAsync($"Data Source={dbFilePath}");
 
                 // create the 'medias' table
                 using (SqliteCommand cmd = new("CREATE TABLE IF NOT EXISTS medias (id INTEGER NOT NULL, media_id INTEGER, post_id INTEGER NOT NULL, link VARCHAR, directory VARCHAR, filename VARCHAR, size INTEGER, api_type VARCHAR, media_type VARCHAR, preview INTEGER, linked VARCHAR, downloaded INTEGER, created_at TIMESTAMP, PRIMARY KEY(id), UNIQUE(media_id));", connection))
@@ -136,10 +130,9 @@ namespace OF_DL.Helpers
         {
             try
             {
-                using SqliteConnection connection = new($"Data Source={Directory.GetCurrentDirectory()}/users.db");
-                Log.Debug("Database data source: " + connection.DataSource);
+                SqliteConnection connection = await GetAndOpenConnectionAsync($"Data Source={Directory.GetCurrentDirectory()}/users.db");
 
-                connection.Open();
+                Log.Debug("Database data source: " + connection.DataSource);
 
                 using (SqliteCommand cmd = new("CREATE TABLE IF NOT EXISTS users (id INTEGER NOT NULL, user_id INTEGER NOT NULL, username VARCHAR NOT NULL, PRIMARY KEY(id), UNIQUE(username));", connection))
                 {
@@ -191,9 +184,7 @@ namespace OF_DL.Helpers
         {
             try
             {
-                using SqliteConnection connection = new($"Data Source={Directory.GetCurrentDirectory()}/users.db");
-
-                connection.Open();
+                SqliteConnection connection = await GetAndOpenConnectionAsync($"Data Source={Directory.GetCurrentDirectory()}/users.db");
 
                 using (SqliteCommand checkCmd = new($"SELECT user_id, username FROM users WHERE user_id = @userId;", connection))
                 {
@@ -244,8 +235,8 @@ namespace OF_DL.Helpers
         {
             try
             {
-                using SqliteConnection connection = new($"Data Source={folder}/Metadata/user_data.db");
-                connection.Open();
+                SqliteConnection connection = await GetAndOpenConnectionAsync($"Data Source={folder}/Metadata/user_data.db");
+
                 using SqliteCommand cmd = new($"SELECT COUNT(*) FROM messages WHERE post_id=@post_id", connection);
                 cmd.Parameters.AddWithValue("@post_id", post_id);
                 int count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
@@ -276,13 +267,12 @@ namespace OF_DL.Helpers
             }
         }
 
-
         public async Task AddPost(string folder, long post_id, string message_text, string price, bool is_paid, bool is_archived, DateTime created_at)
         {
             try
             {
-                using SqliteConnection connection = new($"Data Source={folder}/Metadata/user_data.db");
-                connection.Open();
+                SqliteConnection connection = await GetAndOpenConnectionAsync($"Data Source={folder}/Metadata/user_data.db");
+
                 using SqliteCommand cmd = new($"SELECT COUNT(*) FROM posts WHERE post_id=@post_id", connection);
                 cmd.Parameters.AddWithValue("@post_id", post_id);
                 int count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
@@ -312,13 +302,12 @@ namespace OF_DL.Helpers
             }
         }
 
-
         public async Task AddStory(string folder, long post_id, string message_text, string price, bool is_paid, bool is_archived, DateTime created_at)
         {
             try
             {
-                using SqliteConnection connection = new($"Data Source={folder}/Metadata/user_data.db");
-                connection.Open();
+                SqliteConnection connection = await GetAndOpenConnectionAsync($"Data Source={folder}/Metadata/user_data.db");
+
                 using SqliteCommand cmd = new($"SELECT COUNT(*) FROM stories WHERE post_id=@post_id", connection);
                 cmd.Parameters.AddWithValue("@post_id", post_id);
                 int count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
@@ -348,13 +337,11 @@ namespace OF_DL.Helpers
             }
         }
 
-
         public async Task AddMedia(string folder, long media_id, long post_id, string link, string? directory, string? filename, long? size, string api_type, string media_type, bool preview, bool downloaded, DateTime? created_at)
         {
             try
             {
-                using SqliteConnection connection = new($"Data Source={folder}/Metadata/user_data.db");
-                connection.Open();
+                SqliteConnection connection = await GetAndOpenConnectionAsync($"Data Source={folder}/Metadata/user_data.db");
 
                 StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM medias WHERE media_id=@media_id");
                 if (downloadConfig.DownloadDuplicatedMedia)
@@ -386,27 +373,23 @@ namespace OF_DL.Helpers
             }
         }
 
-
         public async Task<bool> CheckDownloaded(string folder, long media_id, string api_type)
         {
             try
             {
-                bool downloaded = false;
+                SqliteConnection connection = await GetAndOpenConnectionAsync($"Data Source={folder}/Metadata/user_data.db");
 
-                using (SqliteConnection connection = new($"Data Source={folder}/Metadata/user_data.db"))
+                StringBuilder sql = new StringBuilder("SELECT downloaded FROM medias WHERE media_id=@media_id");
+                if (downloadConfig.DownloadDuplicatedMedia)
                 {
-                    StringBuilder sql = new StringBuilder("SELECT downloaded FROM medias WHERE media_id=@media_id");
-                    if(downloadConfig.DownloadDuplicatedMedia)
-                    {
-                        sql.Append(" and api_type=@api_type");
-                    }
-
-                    connection.Open();
-                    using SqliteCommand cmd = new (sql.ToString(), connection);
-                    cmd.Parameters.AddWithValue("@media_id", media_id);
-                    cmd.Parameters.AddWithValue("@api_type", api_type);
-                    downloaded = Convert.ToBoolean(await cmd.ExecuteScalarAsync());
+                    sql.Append(" and api_type=@api_type");
                 }
+
+                using SqliteCommand cmd = new(sql.ToString(), connection);
+                cmd.Parameters.AddWithValue("@media_id", media_id);
+                cmd.Parameters.AddWithValue("@api_type", api_type);
+
+                bool downloaded = Convert.ToBoolean(await cmd.ExecuteScalarAsync());
                 return downloaded;
             }
             catch (Exception ex)
@@ -423,11 +406,9 @@ namespace OF_DL.Helpers
             return false;
         }
 
-
         public async Task UpdateMedia(string folder, long media_id, string api_type, string directory, string filename, long size, bool downloaded, DateTime created_at)
         {
-            using SqliteConnection connection = new($"Data Source={folder}/Metadata/user_data.db");
-            connection.Open();
+            SqliteConnection connection = await GetAndOpenConnectionAsync($"Data Source={folder}/Metadata/user_data.db");
 
             // Construct the update command
             StringBuilder sql = new StringBuilder("UPDATE medias SET directory=@directory, filename=@filename, size=@size, downloaded=@downloaded, created_at=@created_at WHERE media_id=@media_id");
@@ -451,28 +432,22 @@ namespace OF_DL.Helpers
             await command.ExecuteNonQueryAsync();
         }
 
-
         public async Task<long> GetStoredFileSize(string folder, long media_id, string api_type)
         {
-            long size;
-            using (SqliteConnection connection = new($"Data Source={folder}/Metadata/user_data.db"))
-            {
-                connection.Open();
-                using SqliteCommand cmd = new($"SELECT size FROM medias WHERE media_id=@media_id and api_type=@api_type", connection);
-                cmd.Parameters.AddWithValue("@media_id", media_id);
-                cmd.Parameters.AddWithValue("@api_type", api_type);
-                size = Convert.ToInt64(await cmd.ExecuteScalarAsync());
-            }
+            SqliteConnection connection = await GetAndOpenConnectionAsync($"Data Source={folder}/Metadata/user_data.db");
+
+            using SqliteCommand cmd = new($"SELECT size FROM medias WHERE media_id=@media_id and api_type=@api_type", connection);
+            cmd.Parameters.AddWithValue("@media_id", media_id);
+            cmd.Parameters.AddWithValue("@api_type", api_type);
+            long size = Convert.ToInt64(await cmd.ExecuteScalarAsync());
             return size;
         }
 
         public async Task<DateTime?> GetMostRecentPostDate(string folder)
         {
-            DateTime? mostRecentDate = null;
-            using (SqliteConnection connection = new($"Data Source={folder}/Metadata/user_data.db"))
-            {
-                connection.Open();
-                using SqliteCommand cmd = new(@"
+            SqliteConnection connection = await GetAndOpenConnectionAsync($"Data Source={folder}/Metadata/user_data.db");
+
+            using SqliteCommand cmd = new(@"
                     SELECT
 	                    MIN(created_at) AS created_at
                     FROM  (
@@ -488,13 +463,44 @@ namespace OF_DL.Helpers
 				                    ON P.post_id = m.post_id
 		                    WHERE m.downloaded = 0 
 	                      )", connection);
-                var scalarValue = await cmd.ExecuteScalarAsync();
-                if(scalarValue != null && scalarValue != DBNull.Value)
-                {
-                    mostRecentDate = Convert.ToDateTime(scalarValue);
-                }
+
+            var scalarValue = await cmd.ExecuteScalarAsync();
+            if (scalarValue != null && scalarValue != DBNull.Value)
+            {
+                return Convert.ToDateTime(scalarValue);
             }
-            return mostRecentDate;
+
+            return null;
+        }
+
+        public static void CloseAllConnections()
+        {
+            foreach (SqliteConnection cn in _connections.Values)
+            {
+                cn?.Close();
+                cn?.Dispose();
+            }
+
+            _connections.Clear();
+        }
+
+        private static async Task<SqliteConnection> GetAndOpenConnectionAsync(string connectionString, int numberOfRetries = 2)
+        {
+            try
+            {
+                SqliteConnection connection = new(connectionString);
+                connection.Open();
+
+                return connection;
+            }
+            catch (Exception)
+            {
+                if (--numberOfRetries <= 0)
+                    throw;
+
+                await Task.Delay(300);
+                return await GetAndOpenConnectionAsync(connectionString, numberOfRetries);
+            }
         }
     }
 }
