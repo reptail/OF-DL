@@ -467,7 +467,10 @@ public class Program
             await Task.WhenAll(taskActive, taskExpired);
             Log.Debug("Subscriptions: ");
 
-            foreach (KeyValuePair<string, int> activeSub in await taskActive)
+            Dictionary<string, int> subsActive = await taskActive ?? [];
+            Dictionary<string, int> subsExpired = await taskExpired ?? [];
+
+            foreach (KeyValuePair<string, int> activeSub in subsActive)
             {
                 if (!users.ContainsKey(activeSub.Key))
                 {
@@ -479,7 +482,7 @@ public class Program
             if (Config!.IncludeExpiredSubscriptions)
             {
                 Log.Debug("Inactive Subscriptions: ");
-                foreach (KeyValuePair<string, int> expiredSub in await taskExpired)
+                foreach (KeyValuePair<string, int> expiredSub in subsExpired)
                 {
                     if (!users.ContainsKey(expiredSub.Key))
                     {
@@ -505,6 +508,9 @@ public class Program
                     users = users.Where(x => !ignoredUsernames.Contains(x.Key)).ToDictionary(x => x.Key, x => x.Value);
                 }
             }
+
+            if (users.Count <= 0)
+                throw new InvalidOperationException("No users found!");
 
             await dBHelper.CreateUsersDB(users);
             KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP;
