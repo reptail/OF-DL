@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Octokit;
 using OF_DL.Entities;
 using OF_DL.Entities.Archived;
 using OF_DL.Entities.Chats;
@@ -11,12 +12,11 @@ using OF_DL.Entities.Streams;
 using OF_DL.Enumerations;
 using OF_DL.Enumurations;
 using OF_DL.Helpers;
-using Octokit;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using Spectre.Console;
-using System.IO;
+using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
@@ -53,6 +53,8 @@ public class Program
                 .CreateLogger();
 
             AnsiConsole.Write(new FigletText("Welcome to OF-DL").Color(Color.Red));
+
+            ExitIfOtherProcess();
 
             //I dont like it... but I needed to move config here, otherwise the logging level gets changed too late after we missed a whole bunch of important info
             if (File.Exists("config.json"))
@@ -247,7 +249,7 @@ public class Program
                 }
             }
 
-            if(cliNonInteractive)
+            if (cliNonInteractive)
             {
                 // CLI argument overrides configuration
                 config!.NonInteractiveMode = true;
@@ -2532,8 +2534,8 @@ public class Program
 
                         foreach (string name in typeof(LoggingLevel).GetEnumNames())
                         {
-                                string itemLabel = $"[red]{name}[/]";
-                                choices.Add(new(itemLabel, name == levelSwitch.MinimumLevel.ToString()));
+                            string itemLabel = $"[red]{name}[/]";
+                            choices.Add(new(itemLabel, name == levelSwitch.MinimumLevel.ToString()));
                         }
 
                         SelectionPrompt<string> selectionPrompt = new SelectionPrompt<string>()
@@ -2806,6 +2808,26 @@ public class Program
         {
             AnsiConsole.Markup($"[red]Failed to write JSON log file! {ex.Message}[/]\n");
         }
+    }
+
+    static void ExitIfOtherProcess()
+    {
+        Assembly entryAssembly = Assembly.GetEntryAssembly();
+        AssemblyName entryAssemblyName = entryAssembly?.GetName();
+
+        if (entryAssemblyName?.Name is null)
+            return;
+
+        Process thisProcess = Process.GetCurrentProcess();
+        Process[] otherProcesses = [.. Process.GetProcessesByName(entryAssemblyName.Name).Where(p => p.Id != thisProcess.Id)];
+
+        if (otherProcesses.Length <= 0)
+            return;
+
+        AnsiConsole.Markup($"[green]Other OF DL process detected, exiting..\n[/]");
+        Log.Warning("Other OF DL process detected, exiting..");
+
+        Environment.Exit(0);
     }
 
     static (string folderPath, string filePath) GetLogFilePath(Config config)
