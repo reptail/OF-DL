@@ -1741,7 +1741,7 @@ public class APIHelper : IAPIHelper
     }
 
 
-    public async Task<ChatCollection> GetChats(string endpoint, IDownloadConfig config)
+    public async Task<ChatCollection> GetChats(string endpoint, IDownloadConfig config, bool onlyUnread)
     {
         Log.Debug($"Calling GetChats - {endpoint}");
 
@@ -1758,6 +1758,9 @@ public class APIHelper : IAPIHelper
                 { "skip_users", "all" },
                 { "order", "recent" }
             };
+
+            if (onlyUnread)
+                getParams["filter"] = "unread";
 
             string body = await BuildHeaderAndExecuteRequests(getParams, endpoint, GetHttpClient(config));
             chats = JsonConvert.DeserializeObject<Chats>(body, m_JsonSerializerSettings);

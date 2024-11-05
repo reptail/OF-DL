@@ -2626,7 +2626,7 @@ public class Program
 
     private static async Task<HashSet<int>> GetUsersWithUnreadChats(APIHelper apiHelper, IDownloadConfig currentConfig)
     {
-        ChatCollection chats = await apiHelper.GetChats($"/chats", currentConfig);
+        ChatCollection chats = await apiHelper.GetChats($"/chats", currentConfig, onlyUnread: true);
 
         var unreadChats = chats.Chats
             .Where(c => c.Value.unreadMessagesCount > 0)
