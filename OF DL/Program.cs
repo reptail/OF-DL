@@ -1,6 +1,5 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Octokit;
 using OF_DL.Entities;
 using OF_DL.Entities.Archived;
 using OF_DL.Entities.Chats;
@@ -2712,7 +2711,7 @@ public class Program
             output += ";";
         }
 
-        if(auth.COOKIE.Trim() != output.Trim())
+        if (auth.COOKIE.Trim() != output.Trim())
         {
             auth.COOKIE = output;
             string newAuthString = JsonConvert.SerializeObject(auth, Formatting.Indented);
