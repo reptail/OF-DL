@@ -44,15 +44,15 @@ public class Program
 			AuthHelper authHelper = new();
 			Task setupBrowserTask = authHelper.SetupBrowser(runningInDocker);
 
-			Task.Delay(1000).Wait();
+            await Task.Delay(1000);
 			if (!setupBrowserTask.IsCompleted)
 			{
 				AnsiConsole.MarkupLine($"[yellow]Downloading dependencies. Please wait ...[/]");
 			}
-			setupBrowserTask.Wait();
+            await setupBrowserTask;
 
 			Task<Auth?> getAuthTask = authHelper.GetAuthFromBrowser();
-			Task.Delay(5000).Wait();
+            await Task.Delay(5000);
 			if (!getAuthTask.IsCompleted)
 			{
 				if (runningInDocker)
@@ -120,7 +120,7 @@ public class Program
                 AnsiConsole.Markup("[green]config.json located successfully!\n[/]");
                 try
                 {
-                    string jsonText = File.ReadAllText("config.json");
+                    string jsonText = await File.ReadAllTextAsync("config.json");
                     var jsonConfig = JsonConvert.DeserializeObject<Entities.Config>(jsonText);
 
                     if (jsonConfig != null)
@@ -214,7 +214,7 @@ public class Program
                         hoconConfig.AppendLine($"  LoggingLevel = \"{jsonConfig.LoggingLevel.ToString().ToLower()}\"");
                         hoconConfig.AppendLine("}");
 
-                        File.WriteAllText("config.conf", hoconConfig.ToString());
+                        await File.WriteAllTextAsync("config.conf", hoconConfig.ToString());
                         File.Delete("config.json");
                         AnsiConsole.Markup("[green]config.conf created successfully from config.json!\n[/]");
                     }
@@ -242,7 +242,7 @@ public class Program
 				AnsiConsole.Markup("[green]config.conf located successfully!\n[/]");
 				try
 				{
-					string hoconText = File.ReadAllText("config.conf");
+					string hoconText = await File.ReadAllTextAsync("config.conf");
 
 					var hoconConfig = ConfigurationFactory.ParseString(hoconText);
 
@@ -347,7 +347,7 @@ public class Program
 			}
 			else
 			{
-				File.WriteAllText("config.json", JsonConvert.SerializeObject(new Entities.Config(), Formatting.Indented));
+                await File.WriteAllTextAsync("config.json", JsonConvert.SerializeObject(new Entities.Config(), Formatting.Indented));
 				AnsiConsole.Markup("[red]config.json does not exist, a default file has been created in the folder you are running the program from[/]");
 				Log.Error("config.json does not exist");
 
@@ -498,9 +498,10 @@ public class Program
 				AnsiConsole.Markup("[green]rules.json located successfully!\n[/]");
 				try
 				{
-					JsonConvert.DeserializeObject<DynamicRules>(File.ReadAllText("rules.json"));
+                    string rulesJson = await File.ReadAllTextAsync("rules.json");
+                    DynamicRules? dynamicRules = JsonConvert.DeserializeObject<DynamicRules>(rulesJson);
 					Log.Debug($"Rules.json: ");
-					Log.Debug(JsonConvert.SerializeObject(File.ReadAllText("rules.json"), Formatting.Indented));
+					Log.Debug(JsonConvert.SerializeObject(dynamicRules, Formatting.Indented));
 				}
 				catch (Exception e)
 				{
@@ -2777,7 +2778,7 @@ public class Program
                         hoconConfig.AppendLine($"  LoggingLevel = \"{newConfig.LoggingLevel.ToString().ToLower()}\"");
                         hoconConfig.AppendLine("}");
 
-                        File.WriteAllText("config.conf", hoconConfig.ToString());
+                        await File.WriteAllTextAsync("config.conf", hoconConfig.ToString());
 
                         string newConfigString = JsonConvert.SerializeObject(newConfig, Formatting.Indented);
 
@@ -2839,7 +2840,7 @@ public class Program
 						currentConfig = newConfig;
 
 						string newConfigString = JsonConvert.SerializeObject(newConfig, Formatting.Indented);
-						File.WriteAllText("config.json", newConfigString);
+                        await File.WriteAllTextAsync("config.json", newConfigString);
 
 						if (configChanged)
 						{
