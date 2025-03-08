@@ -2630,7 +2630,7 @@ public class APIHelper : IAPIHelper
 
                 using var response = await client.SendAsync(request);
 
-                Log.Debug($"CDRM Project Response (Attempt {attempt}): {response.Content.ReadAsStringAsync().Result}");
+                Log.Debug($"CDRM Project Response (Attempt {attempt}): {await response.Content.ReadAsStringAsync()}");
 
                 response.EnsureSuccessStatusCode();
                 var body = await response.Content.ReadAsStringAsync();
