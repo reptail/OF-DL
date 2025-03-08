@@ -26,6 +26,8 @@ public class APIHelper : IAPIHelper
     private static readonly JsonSerializerSettings m_JsonSerializerSettings;
     private readonly IDBHelper m_DBHelper;
     private readonly Auth auth;
+    private HttpClient httpClient = new();
+
     private static DateTime? cachedDynamicRulesExpiration;
     private static DynamicRules? cachedDynamicRules;
 
@@ -160,17 +162,15 @@ public class APIHelper : IAPIHelper
         return input.All(char.IsDigit);
     }
 
-
-    private static HttpClient GetHttpClient(IDownloadConfig? config = null)
+    private HttpClient GetHttpClient(IDownloadConfig? config = null)
     {
-        var client = new HttpClient();
+        httpClient ??= new HttpClient();
         if (config?.Timeout != null && config.Timeout > 0)
         {
-            client.Timeout = TimeSpan.FromSeconds(config.Timeout.Value);
+            httpClient.Timeout = TimeSpan.FromSeconds(config.Timeout.Value);
         }
-        return client;
+        return httpClient;
     }
-
 
     /// <summary>
     /// this one is used during initialization only
@@ -298,7 +298,7 @@ public class APIHelper : IAPIHelper
 
             Log.Debug("Calling GetAllSubscrptions");
 
-            string? body = await BuildHeaderAndExecuteRequests(getParams, endpoint, new HttpClient());
+            string? body = await BuildHeaderAndExecuteRequests(getParams, endpoint, httpClient);
 
             subscriptions = JsonConvert.DeserializeObject<Subscriptions>(body);
             if (subscriptions != null && subscriptions.hasMore)
@@ -308,7 +308,7 @@ public class APIHelper : IAPIHelper
                 while (true)
                 {
                     Subscriptions newSubscriptions = new();
-                    string? loopbody = await BuildHeaderAndExecuteRequests(getParams, endpoint, new HttpClient());
+                    string? loopbody = await BuildHeaderAndExecuteRequests(getParams, endpoint, httpClient);
 
                     if (!string.IsNullOrEmpty(loopbody) && (!loopbody.Contains("[]") || loopbody.Trim() != "[]"))
                     {
@@ -401,7 +401,7 @@ public class APIHelper : IAPIHelper
             Dictionary<string, int> lists = new();
             while (true)
             {
-                string? body = await BuildHeaderAndExecuteRequests(getParams, endpoint, new HttpClient());
+                string? body = await BuildHeaderAndExecuteRequests(getParams, endpoint, GetHttpClient(config));
 
                 if (body == null)
                 {
@@ -466,7 +466,7 @@ public class APIHelper : IAPIHelper
 
             while (true)
             {
-                var body = await BuildHeaderAndExecuteRequests(getParams, endpoint, new HttpClient());
+                var body = await BuildHeaderAndExecuteRequests(getParams, endpoint, GetHttpClient(config));
                 if (body == null)
                 {
                     break;
@@ -549,7 +549,7 @@ public class APIHelper : IAPIHelper
                     break;
             }
 
-            var body = await BuildHeaderAndExecuteRequests(getParams, endpoint, new HttpClient());
+            var body = await BuildHeaderAndExecuteRequests(getParams, endpoint, GetHttpClient(config));
 
 
             if (mediatype == MediaType.Stories)
@@ -922,7 +922,7 @@ public class APIHelper : IAPIHelper
                 ref getParams,
                 downloadAsOf);
 
-            var body = await BuildHeaderAndExecuteRequests(getParams, endpoint, new HttpClient());
+            var body = await BuildHeaderAndExecuteRequests(getParams, endpoint, GetHttpClient(config));
             posts = JsonConvert.DeserializeObject<Post>(body, m_JsonSerializerSettings);
             if (posts != null && posts.hasMore)
             {
@@ -1075,7 +1075,7 @@ public class APIHelper : IAPIHelper
                 { "skip_users", "all" }
             };
 
-            var body = await BuildHeaderAndExecuteRequests(getParams, endpoint, new HttpClient());
+            var body = await BuildHeaderAndExecuteRequests(getParams, endpoint, GetHttpClient(config));
             singlePost = JsonConvert.DeserializeObject<SinglePost>(body, m_JsonSerializerSettings);
 
             if (singlePost != null)
@@ -1202,7 +1202,7 @@ public class APIHelper : IAPIHelper
                 ref getParams,
                 config.CustomDate);
 
-            var body = await BuildHeaderAndExecuteRequests(getParams, endpoint, new HttpClient());
+            var body = await BuildHeaderAndExecuteRequests(getParams, endpoint, GetHttpClient(config));
             streams = JsonConvert.DeserializeObject<Streams>(body, m_JsonSerializerSettings);
             if (streams != null && streams.hasMore)
             {
