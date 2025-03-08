@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OF_DL.Entities;
 using OF_DL.Entities.Archived;
+using OF_DL.Entities.Chats;
 using OF_DL.Entities.Highlights;
 using OF_DL.Entities.Lists;
 using OF_DL.Entities.Messages;
@@ -114,11 +115,11 @@ public class APIHelper : IAPIHelper
     }
 
 
-    private async Task<string?> BuildHeaderAndExecuteRequests(Dictionary<string, string> getParams, string endpoint, HttpClient client)
+    private async Task<string?> BuildHeaderAndExecuteRequests(Dictionary<string, string> getParams, string endpoint, HttpClient client, HttpMethod? method = null)
     {
         Log.Debug("Calling BuildHeaderAndExecuteRequests");
 
-        HttpRequestMessage request = await BuildHttpRequestMessage(getParams, endpoint);
+        HttpRequestMessage request = await BuildHttpRequestMessage(getParams, endpoint, method);
         using var response = await client.SendAsync(request);
         response.EnsureSuccessStatusCode();
         string body = await response.Content.ReadAsStringAsync();
@@ -129,15 +130,20 @@ public class APIHelper : IAPIHelper
     }
 
 
-    private async Task<HttpRequestMessage> BuildHttpRequestMessage(Dictionary<string, string> getParams, string endpoint)
+    private async Task<HttpRequestMessage> BuildHttpRequestMessage(Dictionary<string, string> getParams, string endpoint, HttpMethod? method = null)
     {
         Log.Debug("Calling BuildHttpRequestMessage");
 
-        string queryParams = "?" + string.Join("&", getParams.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+        method ??= HttpMethod.Get;
+
+        string queryParams = "";
+
+        if (getParams.Any())
+            queryParams = "?" + string.Join("&", getParams.Select(kvp => $"{kvp.Key}={kvp.Value}"));
 
         Dictionary<string, string> headers = GetDynamicHeaders($"/api2/v2{endpoint}", queryParams);
 
-        HttpRequestMessage request = new(HttpMethod.Get, $"{Constants.API_URL}{endpoint}{queryParams}");
+        HttpRequestMessage request = new(method, $"{Constants.API_URL}{endpoint}{queryParams}");
 
         Log.Debug($"Full request URL: {Constants.API_URL}{endpoint}{queryParams}");
 
@@ -2515,6 +2521,94 @@ public class APIHelper : IAPIHelper
         return null;
     }
 
+    public async Task<ChatCollection> GetChats(string endpoint, IDownloadConfig config, bool onlyUnread)
+    {
+        Log.Debug($"Calling GetChats - {endpoint}");
+
+        try
+        {
+            Chats chats = new();
+            ChatCollection collection = new();
+
+            int limit = 60;
+            Dictionary<string, string> getParams = new()
+            {
+                { "limit", $"{limit}" },
+                { "offset", "0" },
+                { "skip_users", "all" },
+                { "order", "recent" }
+            };
+
+            if (onlyUnread)
+                getParams["filter"] = "unread";
+
+            string body = await BuildHeaderAndExecuteRequests(getParams, endpoint, GetHttpClient(config));
+            chats = JsonConvert.DeserializeObject<Chats>(body, m_JsonSerializerSettings);
+
+            if (chats.hasMore)
+            {
+                getParams["offset"] = $"{chats.nextOffset}";
+
+                while (true)
+                {
+                    string loopbody = await BuildHeaderAndExecuteRequests(getParams, endpoint, GetHttpClient(config));
+                    Chats newChats = JsonConvert.DeserializeObject<Chats>(loopbody, m_JsonSerializerSettings);
+
+                    chats.list.AddRange(newChats.list);
+
+                    if (!newChats.hasMore)
+                        break;
+
+                    getParams["offset"] = $"{newChats.nextOffset}";
+                }
+            }
+
+            foreach (Chats.Chat chat in chats.list)
+                collection.Chats.Add(chat.withUser.id, chat);
+
+            return collection;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Exception caught: {0}\n\nStackTrace: {1}", ex.Message, ex.StackTrace);
+            Log.Error("Exception caught: {0}\n\nStackTrace: {1}", ex.Message, ex.StackTrace);
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine("\nInner Exception:");
+                Console.WriteLine("Exception caught: {0}\n\nStackTrace: {1}", ex.InnerException.Message, ex.InnerException.StackTrace);
+                Log.Error("Inner Exception: {0}\n\nStackTrace: {1}", ex.InnerException.Message, ex.InnerException.StackTrace);
+            }
+        }
+
+        return null;
+    }
+
+    public async Task MarkAsUnread(string endpoint, IDownloadConfig config)
+    {
+        Log.Debug($"Calling MarkAsUnread - {endpoint}");
+
+        try
+        {
+            var result = new { success = false };
+
+            string body = await BuildHeaderAndExecuteRequests([], endpoint, GetHttpClient(config), HttpMethod.Delete);
+            result = JsonConvert.DeserializeAnonymousType(body, result);
+
+            if (result?.success != true)
+                Console.WriteLine($"Failed to mark chat as unread! Endpoint: {endpoint}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Exception caught: {0}\n\nStackTrace: {1}", ex.Message, ex.StackTrace);
+            Log.Error("Exception caught: {0}\n\nStackTrace: {1}", ex.Message, ex.StackTrace);
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine("\nInner Exception:");
+                Console.WriteLine("Exception caught: {0}\n\nStackTrace: {1}", ex.InnerException.Message, ex.InnerException.StackTrace);
+                Log.Error("Inner Exception: {0}\n\nStackTrace: {1}", ex.InnerException.Message, ex.InnerException.StackTrace);
+            }
+        }
+    }
 
     public async Task<string> GetDRMMPDPSSH(string mpdUrl, string policy, string signature, string kvp)
     {
