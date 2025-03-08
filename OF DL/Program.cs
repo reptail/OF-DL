@@ -735,13 +735,21 @@ public class Program
 		do
 		{
 			DateTime startTime = DateTime.Now;
-			Dictionary<string, int> users = new();
-			Dictionary<string, int> activeSubs = await m_ApiHelper.GetActiveSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config);
+            Dictionary<string, int> users = new();
 
-			Log.Debug("Subscriptions: ");
+            Task<Dictionary<string, int>?> taskActive = m_ApiHelper.GetActiveSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config);
+            Task<Dictionary<string, int>?> taskExpired = Config!.IncludeExpiredSubscriptions
+                ? m_ApiHelper.GetExpiredSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config)
+                : Task.FromResult<Dictionary<string, int>?>([]);
 
-			foreach (KeyValuePair<string, int> activeSub in activeSubs)
-			{
+            await Task.WhenAll(taskActive, taskExpired);
+
+            Dictionary<string, int> subsActive = await taskActive ?? [];
+            Dictionary<string, int> subsExpired = await taskExpired ?? [];
+
+            Log.Debug("Subscriptions: ");
+            foreach (KeyValuePair<string, int> activeSub in subsActive)
+            {
 				if (!users.ContainsKey(activeSub.Key))
 				{
 					users.Add(activeSub.Key, activeSub.Value);
@@ -751,11 +759,9 @@ public class Program
 			if (Config!.IncludeExpiredSubscriptions)
 			{
 				Log.Debug("Inactive Subscriptions: ");
-
-				Dictionary<string, int> expiredSubs = await m_ApiHelper.GetExpiredSubscriptions("/subscriptions/subscribes", Config.IncludeRestrictedSubscriptions, Config);
-				foreach (KeyValuePair<string, int> expiredSub in expiredSubs)
-				{
-					if (!users.ContainsKey(expiredSub.Key))
+                foreach (KeyValuePair<string, int> expiredSub in subsExpired)
+                {
+                    if (!users.ContainsKey(expiredSub.Key))
 					{
 						users.Add(expiredSub.Key, expiredSub.Value);
 						Log.Debug($"Name: {expiredSub.Key} ID: {expiredSub.Value}");
@@ -778,9 +784,12 @@ public class Program
 					var ignoredUsernames = await m_ApiHelper.GetListUsers($"/lists/{ignoredUsersListId}/users", Config) ?? [];
 					users = users.Where(x => !ignoredUsernames.Contains(x.Key)).ToDictionary(x => x.Key, x => x.Value);
 				}
-			}
+            }
 
-			await dBHelper.CreateUsersDB(users);
+            if (users.Count <= 0)
+                throw new InvalidOperationException("No users found!");
+
+            await dBHelper.CreateUsersDB(users);
 			KeyValuePair<bool, Dictionary<string, int>> hasSelectedUsersKVP;
 			if(Config.NonInteractiveMode && Config.NonInteractiveModePurchasedTab)
 			{
