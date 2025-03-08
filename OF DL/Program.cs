@@ -511,6 +511,7 @@ public class Program
 
 			try
 			{
+                /*
 				// Only run the version check if not in DEBUG mode
 				#if !DEBUG
 				Version localVersion = Assembly.GetEntryAssembly()?.GetName().Version; //Only tested with numeric values.
@@ -544,6 +545,7 @@ public class Program
 				AnsiConsole.Markup("[yellow]Running in Debug/Local mode. Version check skipped.\n[/]");
 				Log.Debug("Running in Debug/Local mode. Version check skipped.");
 				#endif
+                */
 			}
 			catch (Exception e)
 			{
