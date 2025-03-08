@@ -21,6 +21,7 @@ using System.Text.RegularExpressions;
 using static OF_DL.Entities.Messages.Messages;
 using Akka.Configuration;
 using System.Text;
+using System.Diagnostics;
 
 namespace OF_DL;
 
@@ -113,6 +114,8 @@ public class Program
 				.CreateLogger();
 
 			AnsiConsole.Write(new FigletText("Welcome to OF-DL").Color(Color.Red));
+
+            ExitIfOtherProcess();
 
             //Remove config.json and convert to config.conf
             if (File.Exists("config.json"))
@@ -2993,4 +2996,24 @@ public class Program
 			File.WriteAllText("auth.json", newAuthString);
 		}
 	}
+
+    static void ExitIfOtherProcess()
+    {
+        Assembly entryAssembly = Assembly.GetEntryAssembly();
+        AssemblyName entryAssemblyName = entryAssembly?.GetName();
+
+        if (entryAssemblyName?.Name is null)
+            return;
+
+        Process thisProcess = Process.GetCurrentProcess();
+        Process[] otherProcesses = [.. Process.GetProcessesByName(entryAssemblyName.Name).Where(p => p.Id != thisProcess.Id)];
+
+        if (otherProcesses.Length <= 0)
+            return;
+
+        AnsiConsole.Markup($"[green]Other OF DL process detected, exiting..\n[/]");
+        Log.Warning("Other OF DL process detected, exiting..");
+
+        Environment.Exit(0);
+    }
 }
