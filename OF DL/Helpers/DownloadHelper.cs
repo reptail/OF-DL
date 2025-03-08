@@ -829,7 +829,7 @@ public class DownloadHelper : IDownloadHelper
                 memoryStream.Seek(0, SeekOrigin.Begin);
 
                 MD5 md5 = MD5.Create();
-                byte[] hash = md5.ComputeHash(memoryStream);
+                byte[] hash = await md5.ComputeHashAsync(memoryStream);
                 memoryStream.Seek(0, SeekOrigin.Begin);
                 if (!avatarMD5Hashes.Contains(BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant()))
                 {
@@ -872,7 +872,7 @@ public class DownloadHelper : IDownloadHelper
                 memoryStream.Seek(0, SeekOrigin.Begin);
 
                 MD5 md5 = MD5.Create();
-                byte[] hash = md5.ComputeHash(memoryStream);
+                byte[] hash = await md5.ComputeHashAsync(memoryStream);
                 memoryStream.Seek(0, SeekOrigin.Begin);
                 if (!headerMD5Hashes.Contains(BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant()))
                 {
