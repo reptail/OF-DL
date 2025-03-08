@@ -330,11 +330,14 @@ public class APIHelper : IAPIHelper
 
             foreach (Subscriptions.List subscription in subscriptions.list)
             {
-                if ((!(subscription.isRestricted ?? false) || ((subscription.isRestricted ?? false) && includeRestricted))
-                    && !users.ContainsKey(subscription.username))
-                {
+                if (users.ContainsKey(subscription.username))
+                    continue;
+
+                bool isRestricted = subscription.isRestricted ?? false;
+                bool isRestrictedButAllowed = isRestricted && includeRestricted;
+
+                if (!isRestricted || isRestrictedButAllowed)
                     users.Add(subscription.username, subscription.id);
-                }
             }
 
             return users;
