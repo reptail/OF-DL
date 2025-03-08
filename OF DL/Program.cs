@@ -977,9 +977,11 @@ public class Program
 				Log.Debug($"Download path: {p}");
 
 				List<PurchasedTabCollection> purchasedTabCollections = await m_ApiHelper.GetPurchasedTab("/posts/paid", p, Config, users);
-				foreach(PurchasedTabCollection purchasedTabCollection in purchasedTabCollections)
+                int userNum = 1;
+                int userCount = purchasedTabCollections.Count;
+                foreach (PurchasedTabCollection purchasedTabCollection in purchasedTabCollections)
 				{
-					AnsiConsole.Markup($"[red]\nScraping Data for {purchasedTabCollection.Username}\n[/]");
+					AnsiConsole.Markup($"[red]\nScraping Data for {purchasedTabCollection.Username} ({userNum++} of {userCount})\n[/]");
 					string path = "";
 					if (!string.IsNullOrEmpty(Config.DownloadPath))
 					{
@@ -1087,8 +1089,10 @@ public class Program
 			}
 			else if (hasSelectedUsersKVP.Key && !hasSelectedUsersKVP.Value.ContainsKey("ConfigChanged"))
 			{
-				//Iterate over each user in the list of users
-				foreach (KeyValuePair<string, int> user in hasSelectedUsersKVP.Value)
+                //Iterate over each user in the list of users
+                int userNum = 1;
+                int userCount = hasSelectedUsersKVP.Value.Count;
+                foreach (KeyValuePair<string, int> user in hasSelectedUsersKVP.Value)
 				{
 					int paidPostCount = 0;
 					int postCount = 0;
@@ -1098,7 +1102,7 @@ public class Program
 					int highlightsCount = 0;
 					int messagesCount = 0;
 					int paidMessagesCount = 0;
-					AnsiConsole.Markup($"[red]\nScraping Data for {user.Key}\n[/]");
+					AnsiConsole.Markup($"[red]\nScraping Data for {user.Key} ({userNum++} of {userCount})\n[/]");
 
 					Log.Debug($"Scraping Data for {user.Key}");
 
