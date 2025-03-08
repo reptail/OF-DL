@@ -22,6 +22,7 @@ using static OF_DL.Entities.Messages.Messages;
 using Akka.Configuration;
 using System.Text;
 using System.Diagnostics;
+using OF_DL.Entities.Chats;
 
 namespace OF_DL;
 
@@ -1455,9 +1456,19 @@ public class Program
 	{
 		Log.Debug($"Calling DownloadMessages - {user.Key}");
 
-		AnsiConsole.Markup($"[red]Getting Messages\n[/]");
+        AnsiConsole.Markup($"[grey]Getting Unread Chats\n[/]");
+        HashSet<int> unreadChats = await GetUsersWithUnreadChats(downloadContext.ApiHelper, downloadContext.DownloadConfig);
+
+        AnsiConsole.Markup($"[red]Getting Messages\n[/]");
 		MessageCollection messages = await downloadContext.ApiHelper.GetMessages($"/chats/{user.Value}/messages", path, downloadContext.DownloadConfig!);
-		int oldMessagesCount = 0;
+
+        if (unreadChats.Contains(user.Value))
+        {
+            AnsiConsole.Markup($"[grey]Restoring unread state\n[/]");
+            await downloadContext.ApiHelper.MarkAsUnread($"/chats/{user.Value}/mark-as-read", downloadContext.DownloadConfig);
+        }
+
+        int oldMessagesCount = 0;
 		int newMessagesCount = 0;
 		if (messages != null && messages.Messages.Count > 0)
 		{
@@ -3175,7 +3186,18 @@ public class Program
 		}
 	}
 
-	static bool ValidateFilePath(string path)
+    private static async Task<HashSet<int>> GetUsersWithUnreadChats(APIHelper apiHelper, IDownloadConfig currentConfig)
+    {
+        ChatCollection chats = await apiHelper.GetChats($"/chats", currentConfig, onlyUnread: true);
+
+        var unreadChats = chats.Chats
+            .Where(c => c.Value.unreadMessagesCount > 0)
+            .ToList();
+
+        return [.. unreadChats.Select(c => c.Key)];
+    }
+
+    static bool ValidateFilePath(string path)
 	{
 		char[] invalidChars = System.IO.Path.GetInvalidPathChars();
 		char[] foundInvalidChars = path.Where(c => invalidChars.Contains(c)).ToArray();
