@@ -7,8 +7,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationIcon>Icon\download.ico</ApplicationIcon>
+    <LangVersion>12</LangVersion>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <NoWarn>CS0219;CS1998;CS8073;CS8600;CS8602;CS8603;CS8604;CS8605;CS8613;CS8618;CS8625;CS8629;SYSLIB0021;AsyncFixer01;AsyncFixer02</NoWarn>
+  </PropertyGroup>
+  
   <ItemGroup>
     <Content Include="Icon\download.ico" />
   </ItemGroup>
@@ -38,12 +45,15 @@
   <ItemGroup>
     <None Update="auth.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </None>
     <None Update="config.conf">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </None>
     <None Update="rules.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </None>
   </ItemGroup>
 
