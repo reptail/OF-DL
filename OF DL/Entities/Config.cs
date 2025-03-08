@@ -97,6 +97,9 @@ namespace OF_DL.Entities
 
         [ToggleableConfig]
         public bool IgnoreOwnMessages { get; set; } = false;
+
+        public string[] NonInteractiveSpecificUsers { get; set; } = [];
+        public string[] NonInteractiveSpecificLists { get; set; } = [];
     }
 
     public class CreatorConfig : IFileNameFormatConfig
