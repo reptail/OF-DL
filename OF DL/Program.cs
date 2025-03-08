@@ -800,7 +800,15 @@ public class Program
 			}
 
 			AnsiConsole.Markup($"[green]Logged In successfully as {validate.name} {validate.username}\n[/]");
-			await DownloadAllData(apiHelper, auth, config);
+
+            try
+            {
+                await DownloadAllData(apiHelper, auth, config);
+            }
+            finally
+            {
+                DBHelper.CloseAllConnections();
+            }
 		}
 		catch (Exception ex)
 		{
