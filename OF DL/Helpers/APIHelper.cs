@@ -2070,11 +2070,11 @@ public class APIHelper : IAPIHelper
                         {
                             JObject user = await GetUserInfoById($"/users/list?x[]={purchase.fromUser.id}");
 
-                            if(user is null)
+                            if (user is null)
                             {
                                 if (!config.BypassContentForCreatorsWhoNoLongerExist)
                                 {
-                                    if(!purchasedTabUsers.ContainsKey($"Deleted User - {purchase.fromUser.id}"))
+                                    if (!purchasedTabUsers.ContainsKey($"Deleted User - {purchase.fromUser.id}"))
                                     {
                                         purchasedTabUsers.Add($"Deleted User - {purchase.fromUser.id}", purchase.fromUser.id);
                                     }
@@ -2124,7 +2124,7 @@ public class APIHelper : IAPIHelper
                             {
                                 if (!config.BypassContentForCreatorsWhoNoLongerExist)
                                 {
-                                    if(!purchasedTabUsers.ContainsKey($"Deleted User - {purchase.author.id}"))
+                                    if (!purchasedTabUsers.ContainsKey($"Deleted User - {purchase.author.id}"))
                                     {
                                         purchasedTabUsers.Add($"Deleted User - {purchase.author.id}", purchase.author.id);
                                     }

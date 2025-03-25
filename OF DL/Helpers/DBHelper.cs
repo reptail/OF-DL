@@ -65,7 +65,23 @@ namespace OF_DL.Helpers
                         UNIQUE(media_id, api_type)
                     );
 
-                    INSERT INTO medias SELECT * FROM old_medias;
+                    INSERT INTO medias
+                    SELECT
+                        id,
+                        media_id,
+                        post_id,
+                        link,
+                        directory,
+                        filename,
+                        size,
+                        api_type,
+                        media_type,
+                        preview,
+                        linked,
+                        downloaded,
+                        created_at,
+                        CURRENT_TIMESTAMP 
+                    FROM old_medias;
 
                     DROP TABLE old_medias;
 
@@ -503,8 +519,15 @@ namespace OF_DL.Helpers
 
             if (!columnExists)
             {
-                using SqliteCommand alterCmd = new($"ALTER TABLE {tableName} ADD COLUMN record_created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;", connection);
-                await alterCmd.ExecuteNonQueryAsync();
+                try
+                {
+                    using SqliteCommand alterCmd = new($"ALTER TABLE {tableName} ADD COLUMN record_created_at TIMESTAMP DEFAULT '{DateTime.Now:yyyy-MM-dd HH:mm:ss}';", connection);
+                    await alterCmd.ExecuteNonQueryAsync();
+                }
+                catch (Exception)
+                {
+                    throw;
+                }
             }
         }
 
