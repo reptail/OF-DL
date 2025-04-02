@@ -378,7 +378,6 @@ public class APIHelper : IAPIHelper
 
     public async Task<Dictionary<string, int>?> GetExpiredSubscriptions(string endpoint, bool includeRestricted, IDownloadConfig config)
     {
-
         Dictionary<string, string> getParams = new()
         {
             { "offset", "0" },
@@ -392,6 +391,20 @@ public class APIHelper : IAPIHelper
         return await GetAllSubscriptions(getParams, endpoint, includeRestricted, config);
     }
 
+    public async Task<Dictionary<string, int>?> GetBlockedUsers(string endpoint, IDownloadConfig config)
+    {
+        Dictionary<string, string> getParams = new()
+        {
+            { "offset", "0" },
+            { "limit", "50" },
+            { "type", "expired" },
+            { "format", "infinite"}
+        };
+
+        Log.Debug("Calling GetBlockedUsers");
+
+        return await GetAllSubscriptions(getParams, endpoint, true, config);
+    }
 
     public async Task<Dictionary<string, int>> GetLists(string endpoint, IDownloadConfig config)
     {
@@ -2070,11 +2083,11 @@ public class APIHelper : IAPIHelper
                         {
                             JObject user = await GetUserInfoById($"/users/list?x[]={purchase.fromUser.id}");
 
-                            if(user is null)
+                            if (user is null)
                             {
                                 if (!config.BypassContentForCreatorsWhoNoLongerExist)
                                 {
-                                    if(!purchasedTabUsers.ContainsKey($"Deleted User - {purchase.fromUser.id}"))
+                                    if (!purchasedTabUsers.ContainsKey($"Deleted User - {purchase.fromUser.id}"))
                                     {
                                         purchasedTabUsers.Add($"Deleted User - {purchase.fromUser.id}", purchase.fromUser.id);
                                     }
@@ -2124,7 +2137,7 @@ public class APIHelper : IAPIHelper
                             {
                                 if (!config.BypassContentForCreatorsWhoNoLongerExist)
                                 {
-                                    if(!purchasedTabUsers.ContainsKey($"Deleted User - {purchase.author.id}"))
+                                    if (!purchasedTabUsers.ContainsKey($"Deleted User - {purchase.author.id}"))
                                     {
                                         purchasedTabUsers.Add($"Deleted User - {purchase.author.id}", purchase.author.id);
                                     }

@@ -506,6 +506,14 @@ public class Program
                     }
                 }
 
+                const string OUTPUT_BLOCKED_USERS_ARG = "--output-blocked";
+
+                if (args.Any(a => OUTPUT_BLOCKED_USERS_ARG.Equals(a, StringComparison.OrdinalIgnoreCase)))
+                {
+                    config.NonInteractiveMode = true;
+                    config.OutputBlockedUsers = true;
+                }
+
                 Log.Debug("Additional arguments:");
 				foreach (string argument in args)
 				{
@@ -804,6 +812,12 @@ public class Program
 
             try
             {
+                if (config.OutputBlockedUsers)
+                {
+                    await DownloadBlockedUsers(apiHelper, config);
+                    return;
+                }
+
                 await DownloadAllData(apiHelper, auth, config);
             }
             finally
@@ -830,8 +844,29 @@ public class Program
 		}
 	}
 
+    private static async Task DownloadBlockedUsers(APIHelper m_ApiHelper, Entities.Config Config)
+    {
+        const string OUTPUT_FILE = "blocked-users.json";
 
-	private static async Task DownloadAllData(APIHelper m_ApiHelper, Auth Auth, Entities.Config Config)
+        Log.Debug($"Calling GetBlockedUsers");
+
+        AnsiConsole.Markup($"[red]Getting Blocked Users\n[/]");
+
+        Dictionary<string, int>? blockedUsers = await m_ApiHelper.GetBlockedUsers("/users/blocked", Config);
+
+        if (blockedUsers is null || blockedUsers.Count == 0)
+        {
+            AnsiConsole.Markup($"[red]No Blocked Users found.\n[/]");
+        }
+        else
+        {
+            AnsiConsole.Markup($"[red]Found {blockedUsers.Count} Blocked Users, saving to '{OUTPUT_FILE}'\n[/]");
+            string json = JsonConvert.SerializeObject(blockedUsers, Formatting.Indented);
+            await File.WriteAllTextAsync(OUTPUT_FILE, json);
+        }
+    }
+
+    private static async Task DownloadAllData(APIHelper m_ApiHelper, Auth Auth, Entities.Config Config)
 	{
 		DBHelper dBHelper = new DBHelper(Config);
 

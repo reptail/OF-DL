@@ -100,6 +100,8 @@ namespace OF_DL.Entities
 
         public string[] NonInteractiveSpecificUsers { get; set; } = [];
         public string[] NonInteractiveSpecificLists { get; set; } = [];
+
+        public bool OutputBlockedUsers { get; set; }
     }
 
     public class CreatorConfig : IFileNameFormatConfig
